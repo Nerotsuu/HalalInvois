@@ -1,15 +1,15 @@
 <?php
 session_start();
-require_once 'db.php';
+require_once __DIR__ . '/config/db.php';
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
+    $username = trim($_POST['username'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
     if (!empty($username) && !empty($password)) {
-        // Query user from database matching your ERD columns
+        // Query user from database
         $stmt = $pdo->prepare("SELECT user_id, username, password, role FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);

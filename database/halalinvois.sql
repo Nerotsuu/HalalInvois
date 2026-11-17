@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 17, 2026 at 10:47 AM
+-- Generation Time: Nov 17, 2026 at 04:48 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -114,9 +114,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `created_at`) VALUES
-(1, 'owner_store1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'owner', '2026-11-17 09:13:51'),
-(2, 'cashier_1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'cashier', '2026-11-17 09:13:51'),
-(3, 'auditor_gov', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'auditor', '2026-11-17 09:13:51');
+(1, 'owner_store1', '$2y$10$B20CIX7VAff/.XOKht9g3.zniXkZsoxFVSFi6hlTSayWDy2y15NS.', 'owner', '2026-11-17 09:13:51'),
+(2, 'cashier_1', '$2y$10$B20CIX7VAff/.XOKht9g3.zniXkZsoxFVSFi6hlTSayWDy2y15NS.', 'cashier', '2026-11-17 09:13:51'),
+(3, 'auditor_gov', '$2y$10$B20CIX7VAff/.XOKht9g3.zniXkZsoxFVSFi6hlTSayWDy2y15NS.', 'auditor', '2026-11-17 09:13:51');
 
 --
 -- Indexes for dumped tables
