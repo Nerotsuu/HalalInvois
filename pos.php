@@ -1,5 +1,14 @@
 <?php
 session_start();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+// Get logged-in user information
+$username = $_SESSION['username'] ?? 'Cashier';
+$user_role = $_SESSION['role'] ?? 'cashier';
+$login_time = $_SESSION['login_time'] ?? time(); // Fallback to now if not set
 
 // Correct path to db.php inside your config folder
 require_once __DIR__ . '/config/db.php';
@@ -12,7 +21,7 @@ $error_message = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     $cart_data = json_decode($_POST['cart_json'], true);
     $payment_method = $_POST['payment_method'] ?? 'cash';
-    $user_id = $_SESSION['user_id'] ?? 2; // Default to cashier_1 if session isn't set yet
+    $user_id = $_SESSION['user_id']; // Default to cashier_1 if session isn't set yet
 
     if (!empty($cart_data)) {
         try {

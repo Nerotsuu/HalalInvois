@@ -1,5 +1,12 @@
 <?php
 session_start();
+if (isset($_GET['logout'])) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
 require_once __DIR__ . '/config/db.php';
 
 $error = '';
@@ -16,11 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Verify password hash
         if ($user && password_verify($password, $user['password'])) {
-            // Set session variables
+        // Set session variables
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
-
+            $_SESSION['login_time'] = time();
+            
             // Redirect based on RBAC role
             if ($user['role'] == 'owner') {
                 header("Location: owner_dashboard.php");

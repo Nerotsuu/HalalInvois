@@ -1,3 +1,13 @@
+<?php
+    // Define fallbacks to prevent IDE undefined variable warnings
+    $username        = $username        ?? 'Cashier';
+    $user_role       = $user_role       ?? 'cashier';
+    $login_time      = $login_time      ?? time();
+    $success_message = $success_message ?? '';
+    $error_message   = $error_message   ?? '';
+    $products        = $products        ?? [];
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,11 +21,38 @@
 </head>
 <body class="bg-light">
 
-    <!-- Top Navbar -->
-    <nav class="navbar navbar-dark bg-success shadow-sm">
+    <!-- Top Navbar with Live Status Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1"><i class="bi bi-shop"></i> HalalInvois Cashier POS</span>
-            <span class="text-white">Terminal Mode | <a href="login.php" class="text-white text-decoration-none">Logout</a></span>
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-shop"></i> HalalInvois Cashier POS
+            </span>
+            
+            <div class="d-flex align-items-center gap-3 text-white small flex-wrap">
+                <!-- Current Day & Date -->
+                <div>
+                    <i class="bi bi-calendar3"></i> <span id="live-day-date">--</span>
+                </div>
+
+                <!-- Live Clock (Time) -->
+                <div>
+                    <i class="bi bi-clock"></i> <span id="live-clock" class="fw-bold">--:--:--</span>
+                </div>
+
+                <!-- Time Taken Since Login -->
+                <div class="badge bg-white text-success px-2 py-1 shadow-sm">
+                    <i class="bi bi-hourglass-split"></i> Active: <span id="live-session-duration">00h 00m 00s</span>
+                </div>
+
+                <!-- Username & Role -->
+                <div class="border-start ps-3">
+                    <i class="bi bi-person-circle"></i> <strong><?= htmlspecialchars($username); ?></strong>
+                    <span class="badge bg-light text-success ms-1 text-uppercase"><?= htmlspecialchars($user_role); ?></span>
+                </div>
+
+                <!-- Logout Link -->
+                <a href="login.php?logout=1" class="btn btn-sm btn-outline-light ms-2">Logout</a>
+            </div>
         </div>
     </nav>
 
@@ -141,6 +178,39 @@
     <!-- Cart Management JavaScript -->
     <script>
         let cart = [];
+        const loginTimestamp = <?= (int)$login_time ?> * 1000;
+
+        function updateDateTimeAndDuration() {
+            const now = new Date();
+            // 1. Format Day & Date (e.g. Saturday, 21 Nov 2026)
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = days[now.getDay()];
+            const dateFormatted = now.toLocaleDateString('en-MY', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+            document.getElementById('live-day-date').innerText = `${dayName}, ${dateFormatted}`;
+            // 2. Format Live Clock (e.g. 03:45:12 AM)
+            const timeFormatted = now.toLocaleTimeString('en-MY', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            document.getElementById('live-clock').innerText = timeFormatted;
+            // 3. Time Taken / Session Duration Counter (HH:MM:SS)
+            const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - loginTimestamp) / 1000));
+            const hours = Math.floor(elapsedSeconds / 3600);
+            const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+            const seconds = elapsedSeconds % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            document.getElementById('live-session-duration').innerText = 
+                `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+        }
+        // Run immediately and update every second
+        updateDateTimeAndDuration();
+        setInterval(updateDateTimeAndDuration, 1000);
 
         function addToCart(productId, productName, price, stock) {
             let existingItem = cart.find(item => item.product_id === productId);
@@ -232,6 +302,8 @@
             checkoutBtn.disabled = false;
             cartJsonInput.value = JSON.stringify(cart);
         }
+
+
     </script>
 </body>
 </html>
