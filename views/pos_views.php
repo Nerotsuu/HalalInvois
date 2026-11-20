@@ -55,7 +55,7 @@
             </div>
         </div>
     </nav>
-
+    
     <div class="container-fluid py-4">
         
         <?php if (!empty($success_message)): ?>
@@ -161,6 +161,11 @@
                                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearCart()">
                                         <i class="bi bi-trash"></i> Clear Cart
                                     </button>
+                                </div>
+
+                                <div class="d-flex justify-content-between mb-2 text-muted small">
+                                    <span>Simulated LHDN SST (6%):</span>
+                                    <span id="summary-sst">RM 0.00</span>
                                 </div>
                             </div>
                         </form>
@@ -297,8 +302,13 @@
                 cartList.appendChild(li);
             });
 
+            const sstRate = 0.06; // Match $sst_rate in pos.php
+            let sst = subtotal * sstRate;
+            let grandTotal = subtotal + sst;
+
             subtotalEl.innerText = 'RM ' + subtotal.toFixed(2);
-            totalEl.innerText = 'RM ' + subtotal.toFixed(2);
+            document.getElementById('summary-sst').innerText = 'RM ' + sst.toFixed(2);
+            totalEl.innerText = 'RM ' + grandTotal.toFixed(2);
             checkoutBtn.disabled = false;
             cartJsonInput.value = JSON.stringify(cart);
         }

@@ -1,0 +1,104 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+// RBAC check: Only 'owner' can access Owner Dashboard
+if (($_SESSION['role'] ?? '') !== 'owner') {
+    if (($_SESSION['role'] ?? '') === 'cashier') {
+        header("Location: pos.php");
+        exit();
+    } elseif (($_SESSION['role'] ?? '') === 'auditor') {
+        header("Location: auditor_reports.php");
+        exit();
+    }
+    header("Location: login.php?logout=1");
+    exit();
+}
+
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/functions.php';
+
+$username   = $_SESSION['username'] ?? 'Owner';
+$user_role  = $_SESSION['role'] ?? 'owner';
+$login_time = $_SESSION['login_time'] ?? time();
+
+$success_message = '';
+$error_message   = '';
+$active_tab      = $_POST['active_tab'] ?? ($_GET['tab'] ?? 'halal');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Module 1 action: Add Halal Ingredient
+    if (isset($_POST['add_ingredient'])) {
+        $active_tab       = 'halal';
+        $ingredient_name  = trim($_POST['ingredient_name'] ?? '');
+        $supplier_name    = trim($_POST['supplier_name'] ?? '');
+        $expiry_date      = trim($_POST['expiry_date'] ?? '');
+        $current_stock    = (float)($_POST['current_stock'] ?? 0);
+        $unit             = trim($_POST['unit'] ?? 'kg');
+        $halal_cert_no    = trim($_POST['halal_cert_no'] ?? '');
+        $cert_expiry_date = trim($_POST['cert_expiry_date'] ?? '');
+
+        if ($ingredient_name === '' || $supplier_name === '' || $expiry_date === '' || $unit === '') {
+            $error_message = "Please complete all required ingredient fields.";
+        } else {
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO ingredients 
+                        (ingredient_name, supplier_name, expiry_date, current_stock, unit, halal_cert_no, cert_expiry_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $ingredient_name,
+                    $supplier_name,
+                    $expiry_date,
+                    $current_stock,
+                    $unit,
+                    $halal_cert_no !== '' ? $halal_cert_no : null,
+                    $cert_expiry_date !== '' ? $cert_expiry_date : null
+                ]);
+                $success_message = "Ingredient '{$ingredient_name}' added to Halal & Inventory tracking.";
+            } catch (PDOException $e) {
+                $error_message = "Failed to add ingredient: " . $e->getMessage();
+            }
+        }
+    }
+
+    // Module 4 action: Create RBAC User Account
+    if (isset($_POST['create_user'])) {
+        $active_tab   = 'rbac';
+        $new_username = trim($_POST['new_username'] ?? '');
+        $new_password = $_POST['new_password'] ?? '';
+        $new_role     = $_POST['new_role'] ?? 'cashier';
+        $allowed_roles = ['owner', 'cashier', 'auditor'];
+
+        if ($new_username === '' || strlen($new_password) < 6 || !in_array($new_role, $allowed_roles, true)) {
+            $error_message = "Provide a valid username, a password of at least 6 characters, and a valid role.";
+        } else {
+            try {
+                $check = $pdo->prepare("SELECT user_id FROM users WHERE username = ?");
+                $check->execute([$new_username]);
+                if ($check->fetch()) {
+                    $error_message = "Username '{$new_username}' already exists.";
+                } else {
+                    $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+                    $ins = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+                    $ins->execute([$new_username, $hashed, $new_role]);
+                    $success_message = "Account '{$new_username}' created with role '{$new_role}'.";
+                }
+            } catch (PDOException $e) {
+                $error_message = "Failed to create user: " . $e->getMessage();
+            }
+        }
+    }
+}
+
+$ingredients  = getIngredientsList($pdo);
+$salesSummary = getSalesSummary($pdo);
+$invoices     = getRecentInvoices($pdo, 20);
+$usersList    = getAllUsers($pdo);
+
+require_once __DIR__ . '/views/owner_dashboard_views.php';
