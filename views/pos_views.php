@@ -6,6 +6,7 @@
     $success_message = $success_message ?? '';
     $error_message   = $error_message   ?? '';
     $products        = $products        ?? [];
+    $receipt_data    = $receipt_data    ?? null;
 ?>
 
 <!DOCTYPE html>
@@ -78,25 +79,53 @@
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white py-3">
-                        <h5 class="mb-0 text-success fw-bold"><i class="bi bi-grid-fill"></i> Menu / Product Catalog</h5>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <h5 class="mb-0 text-success fw-bold">
+                                <i class="bi bi-grid-fill"></i> Menu / Product Catalog
+                            </h5>
+                            <!-- Search Input -->
+                            <div class="input-group input-group-sm" style="max-width: 260px;">
+                                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                <input type="text" id="search-input" class="form-control" placeholder="Search menu / food..." onkeyup="filterProducts()">
+                            </div>
+                        </div>
+                        <!-- Category Filter Buttons -->
+                        <div class="d-flex flex-wrap gap-2" id="category-filters">
+                            <button type="button" class="btn btn-sm btn-success category-btn active" onclick="setCategory('all', this)">All</button>
+                            <?php 
+                                $categories = array_unique(array_column($products, 'category'));
+                                foreach ($categories as $cat): 
+                            ?>
+                                <button type="button" class="btn btn-sm btn-outline-success category-btn" onclick="setCategory('<?= htmlspecialchars($cat); ?>', this)">
+                                    <?= htmlspecialchars($cat); ?>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="row row-cols-1 row-cols-md-3 g-3">
                             <?php if (!empty($products)): ?>
-                                <?php foreach ($products as $row): ?>
-                                <div class="col">
+                                <?php foreach ($products as $row): 
+                                    // Fallback placeholder image if no image column exists yet
+                                    $product_img = !empty($row['image']) ? $row['image'] : 'assets/default-food.jpeg';
+                                ?>
+                                <div class="col product-item" data-category="<?= htmlspecialchars(strtolower($row['category'])); ?>" data-name="<?= htmlspecialchars(strtolower($row['product_name'])); ?>">
                                     <div class="card h-100 border shadow-sm product-card" 
-                                         style="cursor: pointer;"
-                                         onclick="addToCart(<?= $row['product_id']; ?>, '<?= addslashes($row['product_name']); ?>', <?= $row['price']; ?>, <?= $row['stock_quantity']; ?>)">
-                                        <div class="card-body d-flex flex-column justify-content-between">
+                                        style="cursor: pointer; overflow: hidden;"
+                                        onclick="addToCart(<?= $row['product_id']; ?>, '<?= addslashes($row['product_name']); ?>', <?= $row['price']; ?>, <?= $row['stock_quantity']; ?>)">
+                                        
+                                        <!-- Menu Image -->
+                                        <img src="<?= htmlspecialchars($product_img); ?>" class="card-img-top" alt="<?= htmlspecialchars($row['product_name']); ?>" style="height: 120px; object-fit: cover;">
+                                        
+                                        <div class="card-body d-flex flex-column justify-content-between p-3">
                                             <div>
-                                                <h6 class="card-title fw-bold text-dark"><?= htmlspecialchars($row['product_name']); ?></h6>
-                                                <span class="badge bg-success mb-1"><?= htmlspecialchars($row['category']); ?></span>
+                                                <h6 class="card-title fw-bold text-dark mb-1"><?= htmlspecialchars($row['product_name']); ?></h6>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle mb-1"><?= htmlspecialchars($row['category']); ?></span>
                                                 <div class="text-muted small">Stock: <?= $row['stock_quantity']; ?></div>
                                             </div>
-                                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <div class="d-flex justify-content-between align-items-center mt-2">
                                                 <span class="text-primary fw-bold">RM <?= number_format($row['price'], 2); ?></span>
-                                                <button class="btn btn-sm btn-outline-success"><i class="bi bi-plus-lg"></i> Add</button>
+                                                <button type="button" class="btn btn-sm btn-outline-success"><i class="bi bi-plus-lg"></i> Add</button>
                                             </div>
                                         </div>
                                     </div>
@@ -128,14 +157,22 @@
                                 <li class="list-group-item text-center text-muted py-3">Cart is empty</li>
                             </ul>
 
-                            <!-- Payment Method Selector -->
+                            <!-- Payment Method Selector (Card Removed) -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold small">Payment Method</label>
-                                <select class="form-select form-select-sm" name="payment_method" id="payment_method">
+                                <select class="form-select form-select-sm" name="payment_method" id="payment_method" onchange="togglePaymentMethod()">
                                     <option value="cash">Cash</option>
-                                    <option value="card">Card</option>
-                                    <option value="duitnow_qr" selected>DuitNow QR (Auto-calculated)</option>
+                                    <option value="duitnow_qr" selected>DuitNow QR</option>
                                 </select>
+                            </div>
+
+                            <!-- Dynamic DuitNow QR Display Area -->
+                            <div id="duitnow-preview-box" class="card p-2 mb-3 text-center border-danger bg-light d-none">
+                                <div class="small fw-bold text-danger mb-1"><i class="bi bi-qr-code"></i> DuitNow National QR</div>
+                                <div class="d-flex justify-content-center my-1">
+                                    <img id="duitnow-qr-img" src="" alt="DuitNow QR" style="width: 140px; height: 140px;" class="border rounded bg-white p-1">
+                                </div>
+                                <small class="text-muted" style="font-size: 11px;">Scan with any Malaysian Banking / e-Wallet App</small>
                             </div>
 
                             <!-- Calculation Summary -->
@@ -147,6 +184,10 @@
                                 <div class="d-flex justify-content-between mb-2 text-muted small">
                                     <span>Simulated LHDN e-Invoice Tax:</span>
                                     <span>RM 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2 text-muted small">
+                                    <span>Simulated LHDN SST (6%):</span>
+                                    <span id="summary-sst">RM 0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-3 fs-5 text-success fw-bold">
                                     <span>Total Amount:</span>
@@ -169,11 +210,101 @@
                                 </div>
                             </div>
                         </form>
-
                     </div>
                 </div>
             </div>
 
+            <!-- Malaysian Standard Digital Receipt Modal -->
+            <div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg border-0">
+                        <div class="modal-body p-4" id="printable-receipt">
+                            <!-- Receipt Header -->
+                            <div class="text-center pb-3 border-bottom border-dashed">
+                                <h4 class="fw-bold text-success mb-0"><i class="bi bi-patch-check-fill"></i> HalalInvois</h4>
+                                <small class="text-muted">Micro-SME Halal, Tax & e-Invoicing Compliance Hub</small>
+                                <div class="small text-muted mt-1">UTeM Cafe & F&B Hub, Melaka, Malaysia</div>
+                            </div>
+
+                            <!-- Receipt Metadata -->
+                            <div class="py-2 border-bottom border-dashed small">
+                                <div class="d-flex justify-content-between">
+                                    <span>Receipt No:</span>
+                                    <strong>#TXN-<?= htmlspecialchars($receipt_data['transaction_id'] ?? ''); ?></strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>LHDN UUID:</span>
+                                    <span class="font-monospace text-truncate" style="max-width: 220px;"><?= htmlspecialchars($receipt_data['lhdn_uuid'] ?? ''); ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Date & Time:</span>
+                                    <span><?= htmlspecialchars(($receipt_data['day'] ?? '') . ', ' . ($receipt_data['date'] ?? '') . ' ' . ($receipt_data['time'] ?? '')); ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Cashier:</span>
+                                    <span><?= htmlspecialchars($receipt_data['cashier'] ?? ''); ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Payment:</span>
+                                    <span class="text-uppercase fw-bold text-success"><?= htmlspecialchars($receipt_data['payment_method'] ?? ''); ?></span>
+                                </div>
+                            </div>
+
+                            <!-- Purchased Items -->
+                            <table class="table table-sm table-borderless my-2 small">
+                                <thead>
+                                    <tr class="border-bottom">
+                                        <th>Item</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Price</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($receipt_data['items'])): ?>
+                                        <?php foreach ($receipt_data['items'] as $item): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($item['name']); ?></td>
+                                            <td class="text-center"><?= $item['qty']; ?></td>
+                                            <td class="text-end">RM <?= number_format($item['price'], 2); ?></td>
+                                            <td class="text-end">RM <?= number_format($item['subtotal'], 2); ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+
+                            <!-- Totals & SST Calculation -->
+                            <div class="border-top border-dashed pt-2 small">
+                                <div class="d-flex justify-content-between">
+                                    <span>Subtotal (Excl. Tax):</span>
+                                    <span>RM <?= number_format($receipt_data['subtotal'] ?? 0, 2); ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>SST (6%):</span>
+                                    <span>RM <?= number_format($receipt_data['sst_amount'] ?? 0, 2); ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between fs-5 fw-bold text-dark border-top pt-2 mt-1">
+                                    <span>Grand Total:</span>
+                                    <span>RM <?= number_format($receipt_data['grand_total'] ?? 0, 2); ?></span>
+                                </div>
+                            </div>
+
+                            <!-- Footer & Halal Notice -->
+                            <div class="text-center mt-3 pt-2 border-top border-dashed small text-muted">
+                                <p class="mb-1"><i class="bi bi-check2-circle text-success"></i> 100% JAKIM Halal Certified Ingredients Tracked</p>
+                                <p class="mb-0" style="font-size: 10px;">Simulated LHDN e-Invoice compliant with UBL 2.1 JSON Standard.</p>
+                            </div>
+                        </div>
+
+                        <!-- Modal Action Buttons -->
+                        <div class="modal-footer bg-light p-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-success btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print Receipt</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -183,7 +314,66 @@
     <!-- Cart Management JavaScript -->
     <script>
         let cart = [];
+        let currentCategory = 'all';
         const loginTimestamp = <?= (int)$login_time ?> * 1000;
+
+        // 1. Category Filtering
+        function setCategory(category, buttonEl) {
+            currentCategory = category.toLowerCase();
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('btn-success', 'active');
+                btn.classList.add('btn-outline-success');
+            });
+            buttonEl.classList.remove('btn-outline-success');
+            buttonEl.classList.add('btn-success', 'active');
+            filterProducts();
+        }
+
+        // 2. Search & Category Combined Filter
+        function filterProducts() {
+            const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.product-item');
+            items.forEach(item => {
+                const itemCat = item.getAttribute('data-category');
+                const itemName = item.getAttribute('data-name');
+                const matchesCategory = (currentCategory === 'all' || itemCat === currentCategory);
+                const matchesQuery = itemName.includes(query);
+                if (matchesCategory && matchesQuery) {
+                    item.classList.remove('d-none');
+                } else {
+                    item.classList.add('d-none');
+                }
+            });
+        }
+
+        // 3. Dynamic DuitNow QR Generation based on Cart Total
+        function togglePaymentMethod() {
+            const method = document.getElementById('payment_method').value;
+            const qrBox = document.getElementById('duitnow-preview-box');
+            const qrImg = document.getElementById('duitnow-qr-img');
+            
+            // Calculate total from cart
+            let total = 0;
+            cart.forEach(item => total += (item.price * item.quantity));
+            let sst = total * 0.06;
+            let grandTotal = total + sst;
+            if (method === 'duitnow_qr' && cart.length > 0) {
+                qrBox.classList.remove('d-none');
+                // Generates dynamic DuitNow QR mockup code with amount
+                const qrPayload = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=DUITNOW-HALALINVOIS-RM${grandTotal.toFixed(2)}`;
+                qrImg.src = qrPayload;
+            } else {
+                qrBox.classList.add('d-none');
+            }
+        }
+
+        // 4. Auto-popup Receipt Modal if transaction was completed
+        <?php if (!empty($receipt_data)): ?>
+        document.addEventListener("DOMContentLoaded", function() {
+            var receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+            receiptModal.show();
+        });
+        <?php endif; ?>
 
         function updateDateTimeAndDuration() {
             const now = new Date();
@@ -311,9 +501,8 @@
             totalEl.innerText = 'RM ' + grandTotal.toFixed(2);
             checkoutBtn.disabled = false;
             cartJsonInput.value = JSON.stringify(cart);
+            togglePaymentMethod();
         }
-
-
     </script>
 </body>
 </html>

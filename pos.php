@@ -53,18 +53,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
             $item_stmt = $pdo->prepare("INSERT INTO transaction_items (transaction_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)");
             $stock_stmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?");
 
+            $receipt_items = [];
             foreach ($cart_data as $item) {
                 $qty = (int)$item['quantity'];
                 $price = (float)$item['price'];
                 $prod_id = (int)$item['product_id'];
                 $line_subtotal = round($price * $qty, 2);
-
                 $item_stmt->execute([$transaction_id, $prod_id, $qty, $line_subtotal]);
                 $stock_stmt->execute([$qty, $prod_id]);
+                $receipt_items[] = [
+                    'name'     => $item['product_name'],
+                    'qty'      => $qty,
+                    'price'    => $price,
+                    'subtotal' => $line_subtotal
+                ];
             }
-
             $pdo->commit();
-            $success_message = "Transaction successful! Total: RM " . number_format($grand_total, 2) . " (SST: RM " . number_format($sst_amount, 2) . ") | Simulated LHDN UUID: " . $lhdn_uuid;
+            // Prepare digital receipt data for view
+            $receipt_data = [
+                'transaction_id' => $transaction_id,
+                'lhdn_uuid'      => $lhdn_uuid,
+                'items'          => $receipt_items,
+                'subtotal'       => $subtotal_amount,
+                'sst_amount'     => $sst_amount,
+                'grand_total'    => $grand_total,
+                'payment_method' => $payment_method,
+                'cashier'        => $username,
+                'date'           => date('d/m/Y'),
+                'day'            => date('l'),
+                'time'           => date('h:i:s A')
+            ];
+            $success_message = "Transaction #{$transaction_id} successful! LHDN UUID: " . $lhdn_uuid;
         } catch (Exception $e) {
             $pdo->rollBack();
             $error_message = "Checkout failed: " . $e->getMessage();
