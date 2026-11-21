@@ -25,7 +25,6 @@ require_once __DIR__ . '/includes/functions.php';
 $username   = $_SESSION['username'] ?? 'Owner';
 $user_role  = $_SESSION['role'] ?? 'owner';
 $login_time = $_SESSION['login_time'] ?? time();
-
 $success_message = '';
 $error_message   = '';
 $active_tab      = $_POST['active_tab'] ?? ($_GET['tab'] ?? 'halal');
@@ -67,6 +66,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Module 1 (Sub-item 2): Add New Product
+    if (isset($_POST['add_product'])) {
+        $active_sub     = 'products';
+        $product_name   = trim($_POST['product_name'] ?? '');
+        $category       = trim($_POST['category'] ?? '');
+        $price          = (float)($_POST['price'] ?? 0);
+        $stock_quantity = (int)($_POST['stock_quantity'] ?? 0);
+        $status         = $_POST['status'] ?? 'available';
+        if ($product_name === '' || $category === '' || $price <= 0) {
+            $error_message = "Please provide product name, category, and a valid price.";
+        } else {
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO products (product_name, category, price, stock_quantity, status)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([$product_name, $category, $price, $stock_quantity, $status]);
+                $success_message = "Product '{$product_name}' successfully added to catalog.";
+            } catch (PDOException $e) {
+                $error_message = "Failed to add product: " . $e->getMessage();
+            }
+        }
+    }
+
     // Module 4 action: Create RBAC User Account
     if (isset($_POST['create_user'])) {
         $active_tab   = 'rbac';
@@ -96,9 +119,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$ingredients  = getIngredientsList($pdo);
-$salesSummary = getSalesSummary($pdo);
-$invoices     = getRecentInvoices($pdo, 20);
-$usersList    = getAllUsers($pdo);
+$ingredients    = getIngredientsList($pdo);
+$productsList   = getAvailableProducts($pdo);
+$todaySales     = getTodaySalesSummary($pdo);
+$salesSummary   = getSalesSummary($pdo);
+$invoices       = getRecentInvoices($pdo, 20);
+$usersList      = getAllUsers($pdo);
+$staffStats     = getStaffPerformanceStats($pdo);
+$periodSales    = getPeriodicSalesComparison($pdo);
 
 require_once __DIR__ . '/views/owner_dashboard_views.php';

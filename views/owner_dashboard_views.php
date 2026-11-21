@@ -25,19 +25,82 @@ $todayStr = date('Y-m-d');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HalalInvois - Owner Dashboard</title>
+    <!-- Bootstrap 5 CSS & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+        .dashboard-container { display: flex; flex: 1; }
+        
+        /* Left Collapsible Sidebar */
+        #sidebar {
+            width: 260px;
+            min-height: calc(100vh - 56px);
+            background-color: #1e293b;
+            color: #fff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        #sidebar.collapsed {
+            width: 75px;
+        }
+        #sidebar .nav-link {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin: 2px 8px;
+            white-space: nowrap;
+        }
+        #sidebar .nav-link:hover, #sidebar .nav-link.active {
+            color: #fff;
+            background-color: #059669;
+        }
+        #sidebar .nav-link i {
+            font-size: 1.2rem;
+            min-width: 32px;
+        }
+        #sidebar.collapsed .link-text,
+        #sidebar.collapsed .dropdown-toggle::after,
+        #sidebar.collapsed .sub-menu {
+            display: none !important;
+        }
+        .sub-menu {
+            list-style: none;
+            padding-left: 36px;
+            margin: 4px 0;
+        }
+        .sub-menu .nav-link {
+            font-size: 0.82rem;
+            padding: 6px 12px;
+            color: #cbd5e1;
+        }
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            background-color: #f8fafc;
+            transition: margin-left 0.3s;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
     <!-- Top Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm sticky-top">
         <div class="container-fluid">
+            <!-- Sidebar Toggle Button -->
+            <button class="btn btn-sm btn-outline-light me-2" id="sidebarToggle" title="Toggle Sidebar">
+                <i class="bi bi-list fs-5"></i>
+            </button>
             <a class="navbar-brand mb-0 h1" href="owner_dashboard.php">
                 <i class="bi bi-speedometer2"></i> HalalInvois Owner Dashboard
             </a>
 
-            <div class="d-flex align-items-center gap-3 text-white small flex-wrap">
+            <div class="d-flex align-items-center gap-3 text-white small ms-auto flex-wrap">
                 <div><i class="bi bi-calendar3"></i> <span id="live-day-date">--</span></div>
                 <div><i class="bi bi-clock"></i> <span id="live-clock" class="fw-bold">--:--:--</span></div>
                 <div class="badge bg-white text-success px-2 py-1 shadow-sm">
@@ -47,197 +110,187 @@ $todayStr = date('Y-m-d');
                     <i class="bi bi-person-circle"></i> <strong><?= htmlspecialchars($username); ?></strong>
                     <span class="badge bg-light text-success ms-1 text-uppercase"><?= htmlspecialchars($user_role); ?></span>
                 </div>
-                <a href="pos.php" class="btn btn-sm btn-light text-success fw-semibold">
-                    <i class="bi bi-shop"></i> POS Terminal
-                </a>
+                <a href="pos.php" class="btn btn-sm btn-light text-success fw-semibold"><i class="bi bi-shop"></i> POS Terminal</a>
                 <a href="login.php?logout=1" class="btn btn-sm btn-outline-light">Logout</a>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid py-4">
+    <!-- App Body: Left Sidebar + Main Content -->
+    <div class="dashboard-container">
+        
+        <!-- Left Collapsible Sidebar Pane -->
+        <aside id="sidebar">
+            <div class="py-3">
+                <ul class="nav flex-column" id="dashboardNav">
+                    
+                    <!-- 1. Halal & Inventory Tracking with Sub-list -->
+                    <li class="nav-item">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#sub-halal" role="button">
+                            <i class="bi bi-patch-check"></i> <span class="link-text">Halal &amp; Inventory</span>
+                        </a>
+                        <ul class="collapse show sub-menu" id="sub-halal">
+                            <li><a href="#" class="nav-link sub-link active" onclick="switchSection('sec-ingredients', this)"><i class="bi bi-egg-fried"></i> <span class="link-text">Ingredients Ledger</span></a></li>
+                            <li><a href="#" class="nav-link sub-link" onclick="switchSection('sec-products', this)"><i class="bi bi-box-seam"></i> <span class="link-text">Products Catalog</span></a></li>
+                        </ul>
+                    </li>
 
-        <?php if (!empty($success_message)): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill"></i> <?= htmlspecialchars($success_message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <!-- 2. LHDN e-Invoicing Simulation -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="switchSection('sec-lhdn', this)">
+                            <i class="bi bi-upc-scan"></i> <span class="link-text">LHDN e-Invoicing</span>
+                        </a>
+                    </li>
+
+                    <!-- 3. Tax & Sales Reporting with Sub-list -->
+                    <li class="nav-item">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#sub-tax" role="button">
+                            <i class="bi bi-bar-chart-line"></i> <span class="link-text">Tax &amp; Sales</span>
+                        </a>
+                        <ul class="collapse show sub-menu" id="sub-tax">
+                            <li><a href="#" class="nav-link sub-link" onclick="switchSection('sec-sales-overview', this)"><i class="bi bi-cash-stack"></i> <span class="link-text">Overview &amp; Tax</span></a></li>
+                            <li><a href="#" class="nav-link sub-link" onclick="switchSection('sec-sales-comparison', this)"><i class="bi bi-graph-up-arrow"></i> <span class="link-text">Period Comparison</span></a></li>
+                        </ul>
+                    </li>
+
+                    <!-- 4. RBAC Module with Sub-list -->
+                    <li class="nav-item">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#sub-rbac" role="button">
+                            <i class="bi bi-shield-lock"></i> <span class="link-text">RBAC Access</span>
+                        </a>
+                        <ul class="collapse show sub-menu" id="sub-rbac">
+                            <li><a href="#" class="nav-link sub-link" onclick="switchSection('sec-rbac-users', this)"><i class="bi bi-people"></i> <span class="link-text">User Accounts</span></a></li>
+                            <li><a href="#" class="nav-link sub-link" onclick="switchSection('sec-rbac-stats', this)"><i class="bi bi-person-badge"></i> <span class="link-text">Staff Performance</span></a></li>
+                        </ul>
+                    </li>
+
+                </ul>
             </div>
-        <?php endif; ?>
+        </aside>
 
-        <?php if (!empty($error_message)): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill"></i> <?= htmlspecialchars($error_message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
+        <!-- Main Content Area -->
+        <main class="main-content">
 
-        <!-- Top KPI Overview Row -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">Total Sales</div>
-                        <div class="fs-4 fw-bold text-success">RM <?= number_format($totalSales, 2); ?></div>
-                        <div class="small text-muted"><?= $totalTransactions; ?> recorded invoices</div>
+            <!-- Top KPI Overview Row (Updated: Today's Sales & SST) -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+                        <div class="card-body">
+                            <div class="text-muted small fw-bold text-uppercase">Today's Sales (<?= date('d M'); ?>)</div>
+                            <div class="fs-4 fw-bold text-success">RM <?= number_format((float)($todaySales['today_sales'] ?? 0), 2); ?></div>
+                            <div class="small text-muted"><?= (int)($todaySales['today_transactions'] ?? 0); ?> orders processed today</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+                        <div class="card-body">
+                            <div class="text-muted small fw-bold text-uppercase">Today's SST Collected</div>
+                            <div class="fs-4 fw-bold text-primary">RM <?= number_format((float)($todaySales['today_sst'] ?? 0), 2); ?></div>
+                            <div class="small text-muted">SST (6%) for current day</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+                        <div class="card-body">
+                            <div class="text-muted small fw-bold text-uppercase">Tracked Ingredients</div>
+                            <div class="fs-4 fw-bold text-dark"><?= count($ingredients); ?></div>
+                            <div class="small text-muted">Halal &amp; inventory items</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+                        <div class="card-body">
+                            <div class="text-muted small fw-bold text-uppercase">Active RBAC Accounts</div>
+                            <div class="fs-4 fw-bold text-dark"><?= count($usersList); ?></div>
+                            <div class="small text-muted">Owner / Cashier / Auditor</div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">SST Collected</div>
-                        <div class="fs-4 fw-bold text-primary">RM <?= number_format($totalSst, 2); ?></div>
-                        <div class="small text-muted">Tax &amp; Sales Reporting</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">Tracked Ingredients</div>
-                        <div class="fs-4 fw-bold text-dark"><?= count($ingredients); ?></div>
-                        <div class="small text-muted">Halal &amp; Inventory items</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">Active RBAC Accounts</div>
-                        <div class="fs-4 fw-bold text-dark"><?= count($usersList); ?></div>
-                        <div class="small text-muted">Owner / Cashier / Auditor</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- 4-Module Navigation Tabs -->
-        <ul class="nav nav-pills mb-3 gap-2" id="dashboardTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link <?= $active_tab === 'halal' ? 'active bg-success' : ''; ?>"
-                        data-bs-toggle="pill" data-bs-target="#mod-halal" type="button" role="tab">
-                    <i class="bi bi-patch-check"></i> 1. Halal &amp; Inventory Tracking
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link <?= $active_tab === 'lhdn' ? 'active bg-success' : ''; ?>"
-                        data-bs-toggle="pill" data-bs-target="#mod-lhdn" type="button" role="tab">
-                    <i class="bi bi-upc-scan"></i> 2. LHDN e-Invoicing Simulation
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link <?= $active_tab === 'sales' ? 'active bg-success' : ''; ?>"
-                        data-bs-toggle="pill" data-bs-target="#mod-sales" type="button" role="tab">
-                    <i class="bi bi-bar-chart-line"></i> 3. Tax &amp; Sales Reporting
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link <?= $active_tab === 'rbac' ? 'active bg-success' : ''; ?>"
-                        data-bs-toggle="pill" data-bs-target="#mod-rbac" type="button" role="tab">
-                    <i class="bi bi-shield-lock"></i> 4. Role-Based Access Control (RBAC)
-                </button>
-            </li>
-        </ul>
-
-        <div class="tab-content">
-
-            <!-- MODULE 1: Halal & Inventory Tracking -->
-            <div class="tab-pane fade <?= $active_tab === 'halal' ? 'show active' : ''; ?>" id="mod-halal" role="tabpanel">
+            <!-- Sub-section: Products (New Form Left + Existing Products Table Right) -->
+            <div id="sec-products" class="content-section d-none">
                 <div class="row g-4">
+                    <!-- Left Panel: Form to Add New Product -->
                     <div class="col-lg-4">
                         <div class="card border-0 shadow-sm">
                             <div class="card-header bg-white fw-bold text-success">
-                                <i class="bi bi-plus-circle"></i> Add Halal Ingredient
+                                <i class="bi bi-plus-square"></i> Add New Product / Menu
                             </div>
                             <div class="card-body">
                                 <form method="POST">
-                                    <input type="hidden" name="active_tab" value="halal">
                                     <div class="mb-2">
-                                        <label class="form-label small fw-bold">Ingredient Name *</label>
-                                        <input type="text" name="ingredient_name" class="form-control form-control-sm" required>
+                                        <label class="form-label small fw-bold">Product Name *</label>
+                                        <input type="text" name="product_name" class="form-control form-control-sm" placeholder="e.g. Nasi Lemak Sambal Sotong" required>
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small fw-bold">Supplier Name *</label>
-                                        <input type="text" name="supplier_name" class="form-control form-control-sm" required>
+                                        <label class="form-label small fw-bold">Category *</label>
+                                        <input type="text" name="category" class="form-control form-control-sm" placeholder="e.g. Mains, Beverages, Desserts" required>
                                     </div>
                                     <div class="row g-2 mb-2">
                                         <div class="col-6">
-                                            <label class="form-label small fw-bold">Stock Qty *</label>
-                                            <input type="number" step="0.01" name="current_stock" class="form-control form-control-sm" value="0.00" required>
+                                            <label class="form-label small fw-bold">Price (RM) *</label>
+                                            <input type="number" step="0.01" name="price" class="form-control form-control-sm" placeholder="0.00" required>
                                         </div>
                                         <div class="col-6">
-                                            <label class="form-label small fw-bold">Unit *</label>
-                                            <input type="text" name="unit" class="form-control form-control-sm" placeholder="kg, L, pack" required>
+                                            <label class="form-label small fw-bold">Initial Stock *</label>
+                                            <input type="number" name="stock_quantity" class="form-control form-control-sm" value="50" required>
                                         </div>
                                     </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Item Expiry Date *</label>
-                                        <input type="date" name="expiry_date" class="form-control form-control-sm" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Halal Cert No.</label>
-                                        <input type="text" name="halal_cert_no" class="form-control form-control-sm" placeholder="e.g. JAKIM-MS1500-...">
-                                    </div>
                                     <div class="mb-3">
-                                        <label class="form-label small fw-bold">Halal Cert Expiry</label>
-                                        <input type="date" name="cert_expiry_date" class="form-control form-control-sm">
+                                        <label class="form-label small fw-bold">Availability Status</label>
+                                        <select name="status" class="form-select form-select-sm">
+                                            <option value="available" selected>Available</option>
+                                            <option value="unavailable">Unavailable</option>
+                                        </select>
                                     </div>
-                                    <button type="submit" name="add_ingredient" class="btn btn-success btn-sm w-100">
-                                        Save Ingredient
+                                    <button type="submit" name="add_product" class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-save"></i> Save Product
                                     </button>
                                 </form>
                             </div>
                         </div>
                     </div>
-
+                    <!-- Right Panel: Existing Products Table -->
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold text-success">
-                                <i class="bi bi-list-check"></i> Ingredient Halal &amp; Stock Ledger
+                            <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-card-checklist"></i> Current Products Catalog</span>
+                                <span class="badge bg-success"><?= count($productsList ?? []); ?> Items</span>
                             </div>
                             <div class="card-body table-responsive">
                                 <table class="table table-hover align-middle small">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Ingredient</th>
-                                            <th>Supplier</th>
+                                            <th>ID</th>
+                                            <th>Product Name</th>
+                                            <th>Category</th>
+                                            <th>Price</th>
                                             <th>Stock</th>
-                                            <th>Item Expiry</th>
-                                            <th>Halal Cert</th>
-                                            <th>Cert Status</th>
+                                            <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (!empty($ingredients)): ?>
-                                            <?php foreach ($ingredients as $ing): ?>
-                                                <?php
-                                                $certExp = $ing['cert_expiry_date'] ?? null;
-                                                $isExpiredCert = $certExp && ($certExp < $todayStr);
-                                                $isExpiredItem = ($ing['expiry_date'] ?? '') < $todayStr;
-                                                ?>
-                                                <tr>
-                                                    <td class="fw-semibold"><?= htmlspecialchars($ing['ingredient_name']); ?></td>
-                                                    <td><?= htmlspecialchars($ing['supplier_name']); ?></td>
-                                                    <td><?= number_format((float)$ing['current_stock'], 2); ?> <?= htmlspecialchars($ing['unit']); ?></td>
-                                                    <td>
-                                                        <span class="<?= $isExpiredItem ? 'text-danger fw-bold' : ''; ?>">
-                                                            <?= htmlspecialchars($ing['expiry_date']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?= htmlspecialchars($ing['halal_cert_no'] ?: 'Unset'); ?></td>
-                                                    <td>
-                                                        <?php if (!$certExp): ?>
-                                                            <span class="badge bg-secondary">No Cert Date</span>
-                                                        <?php elseif ($isExpiredCert): ?>
-                                                            <span class="badge bg-danger">Expired (<?= htmlspecialchars($certExp); ?>)</span>
-                                                        <?php else: ?>
-                                                            <span class="badge bg-success">Valid (<?= htmlspecialchars($certExp); ?>)</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                </tr>
+                                        <?php if (!empty($productsList)): ?>
+                                            <?php foreach ($productsList as $p): ?>
+                                            <tr>
+                                                <td>#<?= (int)$p['product_id']; ?></td>
+                                                <td class="fw-bold"><?= htmlspecialchars($p['product_name']); ?></td>
+                                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($p['category']); ?></span></td>
+                                                <td class="text-primary fw-bold">RM <?= number_format((float)$p['price'], 2); ?></td>
+                                                <td><?= (int)$p['stock_quantity']; ?></td>
+                                                <td>
+                                                    <span class="badge bg-<?= ($p['status'] ?? 'available') === 'available' ? 'success' : 'danger'; ?>">
+                                                        <?= htmlspecialchars($p['status'] ?? 'available'); ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="6" class="text-center text-muted py-4">No ingredients recorded yet.</td></tr>
+                                            <tr><td colspan="6" class="text-center text-muted py-4">No products recorded yet.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -247,177 +300,199 @@ $todayStr = date('Y-m-d');
                 </div>
             </div>
 
-            <!-- MODULE 2: LHDN e-Invoicing Simulation -->
-            <div class="tab-pane fade <?= $active_tab === 'lhdn' ? 'show active' : ''; ?>" id="mod-lhdn" role="tabpanel">
-                <div class="card border-0 shadow-sm">
+            <!-- Sub-section: Tax & Sales Overview (Card Payment Removed) -->
+            <div id="sec-sales-overview" class="content-section d-none">
+                <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white fw-bold text-success">
-                        <i class="bi bi-file-earmark-check"></i> Simulated LHDN e-Invoice Records
-                    </div>
-                    <div class="card-body table-responsive">
-                        <table class="table table-striped align-middle small">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Txn ID</th>
-                                    <th>Simulated LHDN UUID</th>
-                                    <th>Cashier</th>
-                                    <th>Payment</th>
-                                    <th>SST (RM)</th>
-                                    <th>Total (RM)</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (!empty($invoices)): ?>
-                                    <?php foreach ($invoices as $inv): ?>
-                                        <tr>
-                                            <td>#<?= (int)$inv['transaction_id']; ?></td>
-                                            <td><code><?= htmlspecialchars($inv['lhdn_uuid'] ?? 'PENDING'); ?></code></td>
-                                            <td><?= htmlspecialchars($inv['username'] ?? 'N/A'); ?></td>
-                                            <td><span class="badge bg-info text-dark text-uppercase"><?= htmlspecialchars($inv['payment_method']); ?></span></td>
-                                            <td><?= number_format((float)$inv['sst_amount'], 2); ?></td>
-                                            <td class="fw-bold"><?= number_format((float)$inv['total_amount'], 2); ?></td>
-                                            <td><?= htmlspecialchars($inv['created_at']); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr><td colspan="7" class="text-center text-muted py-4">No transactions found yet. Complete a sale in POS to generate a simulated LHDN UUID.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MODULE 3: Tax & Sales Reporting -->
-            <div class="tab-pane fade <?= $active_tab === 'sales' ? 'show active' : ''; ?>" id="mod-sales" role="tabpanel">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white fw-bold text-success">
-                        <i class="bi bi-cash-stack"></i> Tax &amp; Sales Breakdown by Payment Method
+                        <i class="bi bi-cash-coin"></i> Breakdown by Payment Method
                     </div>
                     <div class="card-body">
                         <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <div class="p-3 border rounded bg-white">
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded bg-white shadow-sm">
                                     <div class="text-muted small">DuitNow QR Sales</div>
-                                    <div class="fs-5 fw-bold text-success">RM <?= number_format($duitnowSales, 2); ?></div>
+                                    <div class="fs-4 fw-bold text-success">RM <?= number_format($duitnowSales, 2); ?></div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="p-3 border rounded bg-white">
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded bg-white shadow-sm">
                                     <div class="text-muted small">Cash Sales</div>
-                                    <div class="fs-5 fw-bold text-dark">RM <?= number_format($cashSales, 2); ?></div>
+                                    <div class="fs-4 fw-bold text-dark">RM <?= number_format($cashSales, 2); ?></div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="p-3 border rounded bg-white">
-                                    <div class="text-muted small">Card Sales</div>
-                                    <div class="fs-5 fw-bold text-dark">RM <?= number_format($cardSales, 2); ?></div>
-                                </div>
-                            </div>
+                            <!-- Card sales removed as requested -->
                         </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-bordered small mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Metric</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Gross Sales Amount</td>
-                                        <td class="fw-bold">RM <?= number_format($totalSales, 2); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Total SST Tax Recorded</td>
-                                        <td class="fw-bold">RM <?= number_format($totalSst, 2); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Net Sales (Excl. SST)</td>
-                                        <td class="fw-bold">RM <?= number_format(max(0, $totalSales - $totalSst), 2); ?></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <!-- Metrics Table & Payment Donut Chart -->
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <table class="table table-bordered small">
+                                    <thead class="table-light">
+                                        <tr><th>Metric</th><th>Value (RM)</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>Gross Sales Amount</td><td class="fw-bold">RM <?= number_format($totalSales, 2); ?></td></tr>
+                                        <tr><td>Total SST Tax Recorded</td><td class="fw-bold text-primary">RM <?= number_format($totalSst, 2); ?></td></tr>
+                                        <tr><td>Net Sales (Excl. SST)</td><td class="fw-bold text-success">RM <?= number_format(max(0, $totalSales - $totalSst), 2); ?></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card p-3 border-0 bg-light text-center">
+                                    <h6 class="fw-bold text-muted small">Payment Channel Ratio (Interactive)</h6>
+                                    <div style="max-height: 200px;" class="d-flex justify-content-center">
+                                        <canvas id="paymentDonutChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- MODULE 4: Role-Based Access Control (RBAC) -->
-            <div class="tab-pane fade <?= $active_tab === 'rbac' ? 'show active' : ''; ?>" id="mod-rbac" role="tabpanel">
-                <div class="row g-4">
-                    <div class="col-lg-4">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold text-success">
-                                <i class="bi bi-person-plus"></i> Create Staff / Role Account
-                            </div>
-                            <div class="card-body">
-                                <form method="POST">
-                                    <input type="hidden" name="active_tab" value="rbac">
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Username *</label>
-                                        <input type="text" name="new_username" class="form-control form-control-sm" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Password (min 6 chars) *</label>
-                                        <input type="password" name="new_password" class="form-control form-control-sm" minlength="6" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Assigned Role *</label>
-                                        <select name="new_role" class="form-select form-select-sm" required>
-                                            <option value="cashier">cashier (POS Terminal)</option>
-                                            <option value="auditor">auditor (Compliance &amp; Reports)</option>
-                                            <option value="owner">owner (Full Dashboard)</option>
-                                        </select>
-                                    </div>
-                                    <button type="submit" name="create_user" class="btn btn-success btn-sm w-100">
-                                        Create User Account
-                                    </button>
-                                </form>
-                            </div>
+            <!-- Sub-section: Periodic Sales Comparison (Daily, Weekly, Monthly, Yearly) -->
+            <div id="sec-sales-comparison" class="content-section d-none">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-success"><i class="bi bi-graph-up"></i> Sales Comparison Strategy Hub</span>
+                        <!-- Filter buttons -->
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-success active" onclick="updateChartPeriod('daily', this)">Daily (Last 7 Days)</button>
+                            <button type="button" class="btn btn-outline-success" onclick="updateChartPeriod('weekly', this)">Weekly (Last 4 Weeks)</button>
+                            <button type="button" class="btn btn-outline-success" onclick="updateChartPeriod('monthly', this)">Monthly</button>
+                            <button type="button" class="btn btn-outline-success" onclick="updateChartPeriod('yearly', this)">Yearly</button>
                         </div>
                     </div>
+                    <div class="card-body">
+                        <div style="height: 320px;">
+                            <canvas id="salesTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
+            <!-- Sub-section: Staff Performance Review -->
+            <div id="sec-rbac-stats" class="content-section d-none">
+                <div class="row g-4">
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm">
                             <div class="card-header bg-white fw-bold text-success">
-                                <i class="bi bi-people"></i> Registered System Users &amp; Permissions
+                                <i class="bi bi-trophy"></i> Cashier &amp; Staff Sales Performance Review
                             </div>
                             <div class="card-body table-responsive">
                                 <table class="table table-hover align-middle small">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>ID</th>
-                                            <th>Username</th>
+                                            <th>Staff Member</th>
                                             <th>Role</th>
-                                            <th>Created At</th>
+                                            <th class="text-center">Orders Handled</th>
+                                            <th>Total Revenue Generated</th>
+                                            <th>SST Processed</th>
+                                            <th>Last Active</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($usersList as $usr): ?>
+                                        <?php if (!empty($staffStats)): ?>
+                                            <?php foreach ($staffStats as $st): ?>
                                             <tr>
-                                                <td><?= (int)$usr['user_id']; ?></td>
-                                                <td class="fw-semibold"><?= htmlspecialchars($usr['username']); ?></td>
-                                                <td><span class="badge bg-success text-uppercase"><?= htmlspecialchars($usr['role']); ?></span></td>
-                                                <td><?= htmlspecialchars($usr['created_at']); ?></td>
+                                                <td class="fw-bold"><i class="bi bi-person-circle"></i> <?= htmlspecialchars($st['username']); ?></td>
+                                                <td><span class="badge bg-secondary"><?= htmlspecialchars($st['role']); ?></span></td>
+                                                <td class="text-center fw-bold"><?= (int)$st['total_orders']; ?></td>
+                                                <td class="text-success fw-bold">RM <?= number_format((float)$st['total_sales'], 2); ?></td>
+                                                <td>RM <?= number_format((float)$st['total_sst'], 2); ?></td>
+                                                <td class="text-muted"><?= htmlspecialchars($st['last_active'] ?? 'No orders yet'); ?></td>
                                             </tr>
-                                        <?php endforeach; ?>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
+                    <!-- Staff Performance Bar Chart -->
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm p-3">
+                            <h6 class="fw-bold text-muted small mb-3">Revenue by Cashier</h6>
+                            <canvas id="staffChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-        </div>
+        </main>
     </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const loginTimestamp = <?= (int)$login_time ?> * 1000;
 
+        // 1. Sidebar Toggle (Expand / Collapse)
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        // 2. Switching Content Sections
+        function switchSection(sectionId, linkEl) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('d-none'));
+            // Show selected section
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.remove('d-none');
+            // Update active nav link
+            document.querySelectorAll('#sidebar .nav-link').forEach(link => link.classList.remove('active'));
+            if (linkEl) linkEl.classList.add('active');
+        }
+        // 3. Initialize Interactive Charts (Chart.js)
+        const periodData = <?= json_encode($periodSales ?? []); ?>;
+        // Payment Method Doughnut Chart
+        new Chart(document.getElementById('paymentDonutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['DuitNow QR', 'Cash'],
+                datasets: [{
+                    data: [<?= (float)$duitnowSales; ?>, <?= (float)$cashSales; ?>],
+                    backgroundColor: ['#10b981', '#3b82f6']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        // Periodic Sales Trend Chart
+        let salesChart = new Chart(document.getElementById('salesTrendChart'), {
+            type: 'bar',
+            data: {
+                labels: (periodData.daily || []).map(d => d.label),
+                datasets: [{
+                    label: 'Sales Revenue (RM)',
+                    data: (periodData.daily || []).map(d => d.sales),
+                    backgroundColor: '#059669',
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        function updateChartPeriod(period, btnEl) {
+            document.querySelectorAll('#sec-sales-comparison .btn').forEach(b => b.classList.remove('active'));
+            btnEl.classList.add('active');
+            const data = periodData[period] || [];
+            salesChart.data.labels = data.map(d => d.label);
+            salesChart.data.datasets[0].data = data.map(d => d.sales);
+            salesChart.update();
+        }
+        // Staff Performance Chart
+        const staffData = <?= json_encode($staffStats ?? []); ?>;
+        new Chart(document.getElementById('staffChart'), {
+            type: 'bar',
+            data: {
+                labels: staffData.map(s => s.username),
+                datasets: [{
+                    label: 'Revenue (RM)',
+                    data: staffData.map(s => s.total_sales),
+                    backgroundColor: '#6366f1',
+                    borderRadius: 4
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true }
+        });
         function updateDateTimeAndDuration() {
             const now = new Date();
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
