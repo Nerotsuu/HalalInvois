@@ -3,7 +3,7 @@
 
 function getAvailableProducts(PDO $pdo): array {
     try {
-        $stmt = $pdo->prepare("SELECT product_id, product_name, category, price, stock_quantity FROM products WHERE status = 'available'");
+        $stmt = $pdo->prepare("SELECT product_id, product_name, category, price, stock_quantity, status, image FROM products WHERE status = 'available'");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {

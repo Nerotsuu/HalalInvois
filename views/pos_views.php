@@ -114,8 +114,12 @@
                                         style="cursor: pointer; overflow: hidden;"
                                         onclick="addToCart(<?= $row['product_id']; ?>, '<?= addslashes($row['product_name']); ?>', <?= $row['price']; ?>, <?= $row['stock_quantity']; ?>)">
                                         
-                                        <!-- Menu Image -->
-                                        <img src="<?= htmlspecialchars($product_img); ?>" class="card-img-top" alt="<?= htmlspecialchars($row['product_name']); ?>" style="height: 120px; object-fit: cover;">
+                                        <!-- Menu Image with auto fallback -->
+                                        <img src="<?= htmlspecialchars($product_img); ?>" 
+                                            onerror="this.onerror=null; this.src='assets/default-food.jpeg';"
+                                            class="card-img-top" 
+                                            alt="<?= htmlspecialchars($row['product_name']); ?>" 
+                                            style="height: 120px; object-fit: cover;">
                                         
                                         <div class="card-body d-flex flex-column justify-content-between p-3">
                                             <div>

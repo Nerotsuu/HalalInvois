@@ -211,6 +211,111 @@ $todayStr = date('Y-m-d');
                 </div>
             </div>
 
+            <!-- 1A. Halal & Ingredients Ledger (Default View) -->
+            <div id="sec-ingredients" class="content-section">
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white fw-bold text-success">
+                                <i class="bi bi-plus-circle"></i> Add Halal Ingredient
+                            </div>
+                            <div class="card-body">
+                                <form method="POST">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Ingredient Name *</label>
+                                        <input type="text" name="ingredient_name" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Supplier Name *</label>
+                                        <input type="text" name="supplier_name" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <label class="form-label small fw-bold">Stock Qty *</label>
+                                            <input type="number" step="0.01" name="current_stock" class="form-control form-control-sm" value="0.00" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small fw-bold">Unit *</label>
+                                            <input type="text" name="unit" class="form-control form-control-sm" placeholder="kg, L, pack" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Item Expiry Date *</label>
+                                        <input type="date" name="expiry_date" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Halal Cert No.</label>
+                                        <input type="text" name="halal_cert_no" class="form-control form-control-sm" placeholder="e.g. JAKIM-MS1500-...">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Halal Cert Expiry</label>
+                                        <input type="date" name="cert_expiry_date" class="form-control form-control-sm">
+                                    </div>
+                                    <button type="submit" name="add_ingredient" class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-save"></i> Save Ingredient
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-list-check"></i> Ingredient Halal &amp; Stock Ledger</span>
+                                <span class="badge bg-success"><?= count($ingredients); ?> Recorded</span>
+                            </div>
+                            <div class="card-body table-responsive">
+                                <table class="table table-hover align-middle small">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Ingredient</th>
+                                            <th>Supplier</th>
+                                            <th>Stock</th>
+                                            <th>Item Expiry</th>
+                                            <th>Halal Cert</th>
+                                            <th>Cert Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($ingredients)): ?>
+                                            <?php foreach ($ingredients as $ing): ?>
+                                                <?php
+                                                $certExp = $ing['cert_expiry_date'] ?? null;
+                                                $isExpiredCert = $certExp && ($certExp < $todayStr);
+                                                $isExpiredItem = ($ing['expiry_date'] ?? '') < $todayStr;
+                                                ?>
+                                                <tr>
+                                                    <td class="fw-semibold"><?= htmlspecialchars($ing['ingredient_name']); ?></td>
+                                                    <td><?= htmlspecialchars($ing['supplier_name']); ?></td>
+                                                    <td><?= number_format((float)$ing['current_stock'], 2); ?> <?= htmlspecialchars($ing['unit']); ?></td>
+                                                    <td>
+                                                        <span class="<?= $isExpiredItem ? 'text-danger fw-bold' : ''; ?>">
+                                                            <?= htmlspecialchars($ing['expiry_date']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td><?= htmlspecialchars($ing['halal_cert_no'] ?: 'Unset'); ?></td>
+                                                    <td>
+                                                        <?php if (!$certExp): ?>
+                                                            <span class="badge bg-secondary">No Cert Date</span>
+                                                        <?php elseif ($isExpiredCert): ?>
+                                                            <span class="badge bg-danger">Expired (<?= htmlspecialchars($certExp); ?>)</span>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-success">Valid (<?= htmlspecialchars($certExp); ?>)</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="6" class="text-center text-muted py-4">No ingredients recorded yet.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sub-section: Products (New Form Left + Existing Products Table Right) -->
             <div id="sec-products" class="content-section d-none">
                 <div class="row g-4">
@@ -222,6 +327,11 @@ $todayStr = date('Y-m-d');
                             </div>
                             <div class="card-body">
                                 <form method="POST">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Image URL / Path</label>
+                                        <input type="text" name="image" class="form-control form-control-sm" placeholder="e.g. assets/yihii.jpeg or online URL">
+                                        <small class="text-muted" style="font-size: 11px;">Leave blank for default food placeholder.</small>
+                                    </div>
                                     <div class="mb-2">
                                         <label class="form-label small fw-bold">Product Name *</label>
                                         <input type="text" name="product_name" class="form-control form-control-sm" placeholder="e.g. Nasi Lemak Sambal Sotong" required>
@@ -265,7 +375,7 @@ $todayStr = date('Y-m-d');
                                 <table class="table table-hover align-middle small">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>ID</th>
+                                            <th>Image</th>
                                             <th>Product Name</th>
                                             <th>Category</th>
                                             <th>Price</th>
@@ -277,7 +387,16 @@ $todayStr = date('Y-m-d');
                                         <?php if (!empty($productsList)): ?>
                                             <?php foreach ($productsList as $p): ?>
                                             <tr>
-                                                <td>#<?= (int)$p['product_id']; ?></td>
+                                                <td>
+                                                    <?php 
+                                                        $imgPath = !empty($p['image']) ? $p['image'] : 'assets/default-food.jpeg';
+                                                    ?>
+                                                    <img src="<?= htmlspecialchars($imgPath); ?>" 
+                                                        onerror="this.onerror=null; this.src='assets/default-food.jpeg';"
+                                                        alt="<?= htmlspecialchars($p['product_name']); ?>" 
+                                                        style="width: 42px; height: 42px; object-fit: cover; border-radius: 6px;" 
+                                                        class="border bg-light">
+                                                </td>
                                                 <td class="fw-bold"><?= htmlspecialchars($p['product_name']); ?></td>
                                                 <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($p['category']); ?></span></td>
                                                 <td class="text-primary fw-bold">RM <?= number_format((float)$p['price'], 2); ?></td>
@@ -296,6 +415,48 @@ $todayStr = date('Y-m-d');
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. LHDN e-Invoicing Simulation Records -->
+            <div id="sec-lhdn" class="content-section d-none">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-upc-scan"></i> Simulated LHDN e-Invoice Records (UBL 2.1 Standard)</span>
+                        <span class="badge bg-success"><?= count($invoices); ?> Invoices</span>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="table table-striped align-middle small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Txn ID</th>
+                                    <th>Simulated LHDN UUID</th>
+                                    <th>Cashier</th>
+                                    <th>Payment</th>
+                                    <th>SST (RM)</th>
+                                    <th>Total (RM)</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($invoices)): ?>
+                                    <?php foreach ($invoices as $inv): ?>
+                                        <tr>
+                                            <td>#<?= (int)$inv['transaction_id']; ?></td>
+                                            <td><code><?= htmlspecialchars($inv['lhdn_uuid'] ?? 'PENDING'); ?></code></td>
+                                            <td><?= htmlspecialchars($inv['username'] ?? 'N/A'); ?></td>
+                                            <td><span class="badge bg-info text-dark text-uppercase"><?= htmlspecialchars($inv['payment_method']); ?></span></td>
+                                            <td><?= number_format((float)$inv['sst_amount'], 2); ?></td>
+                                            <td class="fw-bold">RM <?= number_format((float)$inv['total_amount'], 2); ?></td>
+                                            <td><?= htmlspecialchars($inv['created_at']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="7" class="text-center text-muted py-4">No transactions found yet. Complete a checkout in POS terminal to generate an invoice.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -366,6 +527,72 @@ $todayStr = date('Y-m-d');
                     <div class="card-body">
                         <div style="height: 320px;">
                             <canvas id="salesTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4A. RBAC User Accounts Management -->
+            <div id="sec-rbac-users" class="content-section d-none">
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white fw-bold text-success">
+                                <i class="bi bi-person-plus"></i> Create Staff / Role Account
+                            </div>
+                            <div class="card-body">
+                                <form method="POST">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Username *</label>
+                                        <input type="text" name="new_username" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Password (min 6 chars) *</label>
+                                        <input type="password" name="new_password" class="form-control form-control-sm" minlength="6" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Assigned Role *</label>
+                                        <select name="new_role" class="form-select form-select-sm" required>
+                                            <option value="cashier">cashier (POS Terminal)</option>
+                                            <option value="auditor">auditor (Compliance &amp; Reports)</option>
+                                            <option value="owner">owner (Full Dashboard)</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" name="create_user" class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-check2-circle"></i> Create User Account
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-people"></i> Registered System Users &amp; Permissions</span>
+                                <span class="badge bg-success"><?= count($usersList); ?> Accounts</span>
+                            </div>
+                            <div class="card-body table-responsive">
+                                <table class="table table-hover align-middle small">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Username</th>
+                                            <th>Role</th>
+                                            <th>Created At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($usersList as $usr): ?>
+                                            <tr>
+                                                <td>#<?= (int)$usr['user_id']; ?></td>
+                                                <td class="fw-semibold"><?= htmlspecialchars($usr['username']); ?></td>
+                                                <td><span class="badge bg-success text-uppercase"><?= htmlspecialchars($usr['role']); ?></span></td>
+                                                <td><?= htmlspecialchars($usr['created_at']); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -456,19 +683,38 @@ $todayStr = date('Y-m-d');
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
-        // Periodic Sales Trend Chart
+        // Periodic Sales Trend Chart (Changed from 'bar' to 'line')
         let salesChart = new Chart(document.getElementById('salesTrendChart'), {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: (periodData.daily || []).map(d => d.label),
                 datasets: [{
                     label: 'Sales Revenue (RM)',
                     data: (periodData.daily || []).map(d => d.sales),
-                    backgroundColor: '#059669',
-                    borderRadius: 6
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(5, 150, 105, 0.15)',
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: '#059669',
+                    pointRadius: 5,
+                    pointHoverRadius: 7
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) { return 'RM ' + value; }
+                        }
+                    }
+                }
+            }
         });
         function updateChartPeriod(period, btnEl) {
             document.querySelectorAll('#sec-sales-comparison .btn').forEach(b => b.classList.remove('active'));

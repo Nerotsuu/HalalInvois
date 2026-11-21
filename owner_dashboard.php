@@ -66,23 +66,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Module 1 (Sub-item 2): Add New Product
+        // Module 1 (Sub-item 2): Add New Product
     if (isset($_POST['add_product'])) {
-        $active_sub     = 'products';
         $product_name   = trim($_POST['product_name'] ?? '');
         $category       = trim($_POST['category'] ?? '');
         $price          = (float)($_POST['price'] ?? 0);
         $stock_quantity = (int)($_POST['stock_quantity'] ?? 0);
         $status         = $_POST['status'] ?? 'available';
+        $image          = trim($_POST['image'] ?? '');
+
+        if ($image === '') {
+            $image = 'assets/default-food.jpeg';
+        }
+
         if ($product_name === '' || $category === '' || $price <= 0) {
             $error_message = "Please provide product name, category, and a valid price.";
         } else {
             try {
                 $stmt = $pdo->prepare("
-                    INSERT INTO products (product_name, category, price, stock_quantity, status)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO products (product_name, category, price, stock_quantity, status, image)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$product_name, $category, $price, $stock_quantity, $status]);
+                $stmt->execute([$product_name, $category, $price, $stock_quantity, $status, $image]);
                 $success_message = "Product '{$product_name}' successfully added to catalog.";
             } catch (PDOException $e) {
                 $error_message = "Failed to add product: " . $e->getMessage();
