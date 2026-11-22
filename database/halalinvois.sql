@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 21, 2026 at 07:23 PM
+-- Generation Time: Nov 22, 2026 at 11:29 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -51,7 +51,7 @@ CREATE TABLE `products` (
   `price` decimal(10,2) NOT NULL,
   `stock_quantity` int(11) NOT NULL DEFAULT 0,
   `status` enum('available','unavailable') NOT NULL DEFAULT 'available',
-  `image` varchar(255) DEFAULT 'assets/img/default-food.png'
+  `image` varchar(255) DEFAULT 'assets/default-food.jpeg'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -59,10 +59,10 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`product_id`, `product_name`, `category`, `price`, `stock_quantity`, `status`, `image`) VALUES
-(1, 'Nasi Lemak Special', 'Mains', 8.50, 37, 'available', 'assets/img/default-food.png'),
-(2, 'Teh Tarik Ais', 'Beverages', 3.20, 46, 'available', 'assets/img/default-food.png'),
-(3, 'Chicken Chop Set', 'Mains', 15.00, -11, 'available', 'assets/img/default-food.png'),
-(4, 'Sirap Bandung', 'Beverages', 3.00, 67, 'available', 'assets/img/default-food.png');
+(1, 'Nasi Lemak Special', 'Mains', 8.50, 37, 'available', 'assets/default-food.jpeg'),
+(2, 'Teh Tarik Ais', 'Beverages', 3.20, 46, 'available', 'assets/default-food.jpeg'),
+(3, 'Chicken Chop Set', 'Mains', 15.00, -11, 'available', 'assets/default-food.jpeg'),
+(4, 'Sirap Bandung', 'Beverages', 3.00, 67, 'available', 'assets/default-food.jpeg');
 
 -- --------------------------------------------------------
 
