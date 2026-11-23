@@ -11,6 +11,8 @@ $invoices        = $invoices        ?? [];
 $usersList       = $usersList       ?? [];
 
 $newly_added_ingredient = $newly_added_ingredient ?? null;
+$newly_added_product = $newly_added_product ?? null;
+
 $totalSales        = (float)($salesSummary['total_sales'] ?? 0);
 $totalSst          = (float)($salesSummary['total_sst'] ?? 0);
 $totalTransactions = (int)($salesSummary['total_transactions'] ?? 0);
@@ -352,105 +354,122 @@ $todayStr = date('Y-m-d');
                 </div>
             </div>
 
-            <!-- Sub-section: Products (New Form Left + Existing Products Table Right) -->
+                        <!-- 1B. Products Catalog & Menu Management (Main Full-Width View) -->
             <div id="sec-products" class="content-section d-none">
-                <div class="row g-4">
-                    <!-- Left Panel: Form to Add New Product -->
-                    <div class="col-lg-4">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold text-success">
-                                <i class="bi bi-plus-square"></i> Add New Product / Menu
+                
+                <!-- Section Header with Add Product Button -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1">Products Catalog &amp; Menu Management</h4>
+                        <p class="text-muted small mb-0">Browse, filter, add, edit, and manage all food and beverage menu items</p>
+                    </div>
+                    <button type="button" class="btn btn-success fw-semibold px-3 py-2 shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                        <i class="bi bi-plus-lg me-1"></i> Add New Product / Menu
+                    </button>
+                </div>
+
+                <!-- Products Card Container -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    
+                    <!-- Search Bar & Category Filter Pills Toolbar -->
+                    <div class="card-header bg-white border-bottom p-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <!-- Search Input -->
+                            <div class="input-group" style="max-width: 320px;">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="productSearchInput" class="form-control border-start-0 ps-0" placeholder="Search menu / category..." onkeyup="filterProductsCatalog()">
                             </div>
-                            <div class="card-body">
-                                <form method="POST">
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Image URL / Path</label>
-                                        <input type="text" name="image" class="form-control form-control-sm" placeholder="e.g. assets/yihii.jpeg or online URL">
-                                        <small class="text-muted" style="font-size: 11px;">Leave blank for default food placeholder.</small>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Product Name *</label>
-                                        <input type="text" name="product_name" class="form-control form-control-sm" placeholder="e.g. Nasi Lemak Sambal Sotong" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Category *</label>
-                                        <input type="text" name="category" class="form-control form-control-sm" placeholder="e.g. Mains, Beverages, Desserts" required>
-                                    </div>
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-6">
-                                            <label class="form-label small fw-bold">Price (RM) *</label>
-                                            <input type="number" step="0.01" name="price" class="form-control form-control-sm" placeholder="0.00" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label small fw-bold">Initial Stock *</label>
-                                            <input type="number" name="stock_quantity" class="form-control form-control-sm" value="50" required>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Availability Status</label>
-                                        <select name="status" class="form-select form-select-sm">
-                                            <option value="available" selected>Available</option>
-                                            <option value="unavailable">Unavailable</option>
-                                        </select>
-                                    </div>
-                                    <button type="submit" name="add_product" class="btn btn-success btn-sm w-100">
-                                        <i class="bi bi-save"></i> Save Product
+
+                            <!-- Dynamic Category Filter Pills -->
+                            <div class="d-flex flex-wrap gap-2" id="productCategoryPills">
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 product-cat-pill active" onclick="filterProductByCategory('all', this)">
+                                    All (<?= count($productsList ?? []); ?>)
+                                </button>
+                                <?php 
+                                    $allCats = array_unique(array_column($productsList ?? [], 'category'));
+                                    foreach ($allCats as $cat): 
+                                        $catCount = count(array_filter($productsList ?? [], fn($i) => strcasecmp($i['category'], $cat) === 0));
+                                ?>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 product-cat-pill" onclick="filterProductByCategory('<?= htmlspecialchars(strtolower($cat)); ?>', this)">
+                                        <?= htmlspecialchars($cat); ?> (<?= $catCount; ?>)
                                     </button>
-                                </form>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
-                    <!-- Right Panel: Existing Products Table -->
-                    <div class="col-lg-8">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-card-checklist"></i> Current Products Catalog</span>
-                                <span class="badge bg-success"><?= count($productsList ?? []); ?> Items</span>
-                            </div>
-                            <div class="card-body table-responsive">
-                                <table class="table table-hover align-middle small">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Image</th>
-                                            <th>Product Name</th>
-                                            <th>Category</th>
-                                            <th>Price</th>
-                                            <th>Stock</th>
-                                            <th>Status</th>
+
+                    <!-- Products Table -->
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="productsTable">
+                            <thead class="table-light text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.5px;">
+                                <tr>
+                                    <th class="ps-4 py-3">Photo</th>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
+                                    <th>Price (RM)</th>
+                                    <th>Stock</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($productsList)): ?>
+                                    <?php foreach ($productsList as $p): ?>
+                                        <?php 
+                                            $imgPath = !empty($p['image']) ? $p['image'] : 'assets/default-food.jpeg';
+                                            $isAvail = ($p['status'] ?? 'available') === 'available';
+                                        ?>
+                                        <tr class="product-row" data-category="<?= htmlspecialchars(strtolower($p['category'])); ?>" data-search="<?= strtolower(htmlspecialchars($p['product_name'] . ' ' . $p['category'])); ?>">
+                                            <td class="ps-4">
+                                                <img src="<?= htmlspecialchars($imgPath); ?>" 
+                                                     onerror="this.onerror=null; this.src='assets/default-food.jpeg';"
+                                                     alt="<?= htmlspecialchars($p['product_name']); ?>" 
+                                                     style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px;" 
+                                                     class="border shadow-sm bg-light">
+                                            </td>
+                                            <td class="fw-bold text-dark">
+                                                <?= htmlspecialchars($p['product_name']); ?>
+                                                <div class="text-muted small font-monospace">#<?= (int)$p['product_id']; ?></div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border px-2 py-1"><?= htmlspecialchars($p['category']); ?></span>
+                                            </td>
+                                            <td class="text-primary fw-bold">
+                                                RM <?= number_format((float)$p['price'], 2); ?>
+                                            </td>
+                                            <td>
+                                                <span class="fw-semibold <?= (int)$p['stock_quantity'] <= 10 ? 'text-danger' : 'text-dark'; ?>">
+                                                    <?= (int)$p['stock_quantity']; ?> units
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="rounded-pill px-3 py-1 fw-semibold small" 
+                                                      style="<?= $isAvail ? 'background-color: #dcfce7; color: #16a34a;' : 'background-color: #fee2e2; color: #dc2626;'; ?>">
+                                                    <?= $isAvail ? 'Available' : 'Unavailable'; ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <!-- Edit Button -->
+                                                <button type="button" class="btn btn-sm btn-outline-primary rounded-2 me-1" 
+                                                        onclick="openEditProductModal(<?= (int)$p['product_id']; ?>, '<?= addslashes($p['product_name']); ?>', '<?= addslashes($p['category']); ?>', <?= (float)$p['price']; ?>, <?= (int)$p['stock_quantity']; ?>, '<?= $p['status']; ?>', '<?= addslashes($imgPath); ?>')">
+                                                    <i class="bi bi-pencil-square"></i> Edit
+                                                </button>
+
+                                                <!-- Delete Button -->
+                                                <form method="POST" class="d-inline" onsubmit="return confirm('Delete \'<?= addslashes($p['product_name']); ?>\' from catalog?');">
+                                                    <input type="hidden" name="delete_product_id" value="<?= (int)$p['product_id']; ?>">
+                                                    <button type="submit" name="delete_product" class="btn btn-sm btn-outline-danger rounded-2">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($productsList)): ?>
-                                            <?php foreach ($productsList as $p): ?>
-                                            <tr>
-                                                <td>
-                                                    <?php 
-                                                        $imgPath = !empty($p['image']) ? $p['image'] : 'assets/default-food.jpeg';
-                                                    ?>
-                                                    <img src="<?= htmlspecialchars($imgPath); ?>" 
-                                                        onerror="this.onerror=null; this.src='assets/default-food.jpeg';"
-                                                        alt="<?= htmlspecialchars($p['product_name']); ?>" 
-                                                        style="width: 42px; height: 42px; object-fit: cover; border-radius: 6px;" 
-                                                        class="border bg-light">
-                                                </td>
-                                                <td class="fw-bold"><?= htmlspecialchars($p['product_name']); ?></td>
-                                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($p['category']); ?></span></td>
-                                                <td class="text-primary fw-bold">RM <?= number_format((float)$p['price'], 2); ?></td>
-                                                <td><?= (int)$p['stock_quantity']; ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?= ($p['status'] ?? 'available') === 'available' ? 'success' : 'danger'; ?>">
-                                                        <?= htmlspecialchars($p['status'] ?? 'available'); ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <tr><td colspan="6" class="text-center text-muted py-4">No products recorded yet.</td></tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="7" class="text-center text-muted py-5">No products found. Click "+ Add New Product / Menu" to add items.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -821,6 +840,217 @@ $todayStr = date('Y-m-d');
         </div>
     </div>
 
+    <!-- MODAL A: Add New Product / Menu (With File Upload & Live Image Preview) -->
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark" id="addProductModalLabel">Add New Product / Menu</h5>
+                        <p class="text-muted small mb-0">Create a new catalogue item with custom photos and pricing</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="modal-body p-4">
+                        
+                        <!-- Upload Photo from PC / Folder with Live Preview -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Upload Product Photo</label>
+                            <div class="row align-items-center g-3">
+                                <div class="col-auto">
+                                    <img id="addPhotoPreview" src="assets/default-food.jpeg" alt="Preview" 
+                                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px;" 
+                                         class="border shadow-sm bg-light">
+                                </div>
+                                <div class="col">
+                                    <input type="file" name="product_image" id="addPhotoInput" class="form-control rounded-3" 
+                                           accept="image/png, image/jpeg, image/jpg, image/webp" 
+                                           onchange="previewSelectedImage(this, 'addPhotoPreview')">
+                                    <small class="text-muted" style="font-size: 11px;">Select JPG, PNG or WEBP from your computer (leave empty for default food image).</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Name -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Product / Menu Name *</label>
+                            <input type="text" name="product_name" class="form-control form-control-lg fs-6 rounded-3" placeholder="e.g. Nasi Lemak Sambal Sotong" required>
+                        </div>
+
+                        <!-- Category & Price -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Category *</label>
+                                <input type="text" name="category" class="form-control rounded-3" placeholder="e.g. Mains, Beverages, Desserts" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Price (RM) *</label>
+                                <input type="number" step="0.01" name="price" class="form-control rounded-3" placeholder="0.00" required>
+                            </div>
+                        </div>
+
+                        <!-- Stock & Availability -->
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Initial Stock Quantity *</label>
+                                <input type="number" name="stock_quantity" class="form-control rounded-3" value="50" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Availability Status</label>
+                                <select name="status" class="form-select rounded-3">
+                                    <option value="available" selected>Available</option>
+                                    <option value="unavailable">Unavailable</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                        <button type="button" class="btn btn-light border px-4 rounded-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="add_product" class="btn btn-success px-4 rounded-3 fw-semibold">
+                            <i class="bi bi-save me-1"></i> Save Product
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL B: Edit Product Modal -->
+    <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark" id="editProductModalLabel">Edit Product / Menu</h5>
+                        <p class="text-muted small mb-0">Update pricing, photo, stock quantity or availability</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="product_id" id="edit_product_id">
+                    <input type="hidden" name="existing_image" id="edit_existing_image">
+
+                    <div class="modal-body p-4">
+                        <!-- Replace Photo -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Product Photo</label>
+                            <div class="row align-items-center g-3">
+                                <div class="col-auto">
+                                    <img id="editPhotoPreview" src="assets/default-food.jpeg" alt="Preview" 
+                                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px;" 
+                                         class="border shadow-sm bg-light">
+                                </div>
+                                <div class="col">
+                                    <input type="file" name="product_image" class="form-control rounded-3" 
+                                           accept="image/png, image/jpeg, image/jpg, image/webp" 
+                                           onchange="previewSelectedImage(this, 'editPhotoPreview')">
+                                    <small class="text-muted" style="font-size: 11px;">Select a new image from PC to replace current photo.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Name -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Product Name *</label>
+                            <input type="text" name="product_name" id="edit_product_name" class="form-control form-control-lg fs-6 rounded-3" required>
+                        </div>
+
+                        <!-- Category & Price -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Category *</label>
+                                <input type="text" name="category" id="edit_category" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Price (RM) *</label>
+                                <input type="number" step="0.01" name="price" id="edit_price" class="form-control rounded-3" required>
+                            </div>
+                        </div>
+
+                        <!-- Stock & Status -->
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Stock Quantity *</label>
+                                <input type="number" name="stock_quantity" id="edit_stock_quantity" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Availability Status</label>
+                                <select name="status" id="edit_status" class="form-select rounded-3">
+                                    <option value="available">Available</option>
+                                    <option value="unavailable">Unavailable</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                        <button type="button" class="btn btn-light border px-4 rounded-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="edit_product" class="btn btn-primary px-4 rounded-3 fw-semibold">
+                            <i class="bi bi-check2 me-1"></i> Update Product
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL C: Product Success Modal (Verified Popup With Checkmark) -->
+    <div class="modal fade" id="productSuccessModal" tabindex="-1" aria-labelledby="productSuccessLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4 text-center">
+                
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+
+                <!-- Green Checkmark Circle -->
+                <div class="my-2">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background-color: #10b981;">
+                        <i class="bi bi-check-lg text-white fs-3"></i>
+                    </div>
+                </div>
+
+                <!-- Product Name Title -->
+                <h4 class="fw-bold text-dark mt-2 mb-1">
+                    <?= htmlspecialchars($newly_added_product['name'] ?? 'Product'); ?>
+                </h4>
+                <div class="text-muted small mb-3">Product Added to Halal Catalogue</div>
+
+                <!-- Entered Details Box -->
+                <div class="border rounded-3 p-3 text-start bg-light mb-4" style="font-size: 0.88rem;">
+                    <div class="d-flex align-items-center gap-3 mb-2 pb-2 border-bottom">
+                        <img src="<?= htmlspecialchars($newly_added_product['image'] ?? 'assets/default-food.jpeg'); ?>" 
+                             style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;" class="border">
+                        <div>
+                            <div class="fw-bold text-dark"><?= htmlspecialchars($newly_added_product['name'] ?? ''); ?></div>
+                            <span class="badge bg-success-subtle text-success"><?= htmlspecialchars($newly_added_product['category'] ?? ''); ?></span>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Price:</span>
+                        <strong class="text-primary">RM <?= htmlspecialchars($newly_added_product['price'] ?? '0.00'); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Initial Stock:</span>
+                        <strong class="text-dark"><?= htmlspecialchars((string)($newly_added_product['stock'] ?? '0')); ?> units</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Status:</span>
+                        <span class="badge bg-success text-uppercase"><?= htmlspecialchars($newly_added_product['status'] ?? 'available'); ?></span>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success btn-lg w-100 rounded-3 fw-semibold py-2" data-bs-dismiss="modal">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const loginTimestamp = <?= (int)$login_time ?> * 1000;
@@ -978,6 +1208,76 @@ $todayStr = date('Y-m-d');
         document.addEventListener("DOMContentLoaded", function() {
             const successModal = new bootstrap.Modal(document.getElementById('ingredientSuccessModal'));
             successModal.show();
+        });
+        <?php endif; ?>
+
+        // 1. Live Image Preview when user selects photo from PC
+        function previewSelectedImage(input, previewElementId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(previewElementId).src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // 2. Category Filter Pills for Products Catalog
+        let activeProductCategory = 'all';
+
+        function filterProductByCategory(category, btnEl) {
+            activeProductCategory = category.toLowerCase();
+            document.querySelectorAll('.product-cat-pill').forEach(b => {
+                b.classList.remove('btn-success', 'active');
+                b.classList.add('btn-outline-secondary');
+            });
+            btnEl.classList.remove('btn-outline-secondary');
+            btnEl.classList.add('btn-success', 'active');
+            applyProductFilters();
+        }
+
+        // 3. Search Bar Filter for Products Catalog
+        function filterProductsCatalog() {
+            applyProductFilters();
+        }
+
+        function applyProductFilters() {
+            const query = (document.getElementById('productSearchInput')?.value || '').toLowerCase().trim();
+            const rows = document.querySelectorAll('.product-row');
+
+            rows.forEach(row => {
+                const rowCat = row.getAttribute('data-category') || '';
+                const rowSearch = row.getAttribute('data-search') || '';
+
+                const matchesCat = (activeProductCategory === 'all' || rowCat === activeProductCategory);
+                const matchesQuery = query === '' || rowSearch.includes(query);
+
+                if (matchesCat && matchesQuery) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // 4. Pre-fill Edit Product Modal
+        function openEditProductModal(id, name, category, price, stock, status, image) {
+            document.getElementById('edit_product_id').value = id;
+            document.getElementById('edit_product_name').value = name;
+            document.getElementById('edit_category').value = category;
+            document.getElementById('edit_price').value = price;
+            document.getElementById('edit_stock_quantity').value = stock;
+            document.getElementById('edit_status').value = status;
+            document.getElementById('edit_existing_image').value = image;
+            document.getElementById('editPhotoPreview').src = image;
+
+            new bootstrap.Modal(document.getElementById('editProductModal')).show();
+        }
+
+        // 5. Auto-trigger Product Success Modal upon adding a new product
+        <?php if (!empty($newly_added_product)): ?>
+        document.addEventListener("DOMContentLoaded", function() {
+            new bootstrap.Modal(document.getElementById('productSuccessModal')).show();
         });
         <?php endif; ?>
     </script>

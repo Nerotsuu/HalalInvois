@@ -75,19 +75,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-        // Module 1 (Sub-item 2): Add New Product
+    // Module 1 (Sub-item 2A): Add New Product with Image File Upload
     if (isset($_POST['add_product'])) {
         $product_name   = trim($_POST['product_name'] ?? '');
         $category       = trim($_POST['category'] ?? '');
         $price          = (float)($_POST['price'] ?? 0);
         $stock_quantity = (int)($_POST['stock_quantity'] ?? 0);
         $status         = $_POST['status'] ?? 'available';
-        $image          = trim($_POST['image'] ?? '');
-
-        if ($image === '') {
-            $image = 'assets/default-food.jpeg';
+        $image          = 'assets/default-food.jpeg';
+        // Handle uploaded image from PC / folder
+        if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['product_image']['tmp_name'];
+            $fileExt = strtolower(pathinfo($_FILES['product_image']['name'], PATHINFO_EXTENSION));
+            if (in_array($fileExt, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $newFileName = 'prod_' . time() . '_' . mt_rand(100, 999) . '.' . $fileExt;
+                $destPath = __DIR__ . '/assets/' . $newFileName;
+                if (move_uploaded_file($fileTmpPath, $destPath)) {
+                    $image = 'assets/' . $newFileName;
+                }
+            }
         }
-
         if ($product_name === '' || $category === '' || $price <= 0) {
             $error_message = "Please provide product name, category, and a valid price.";
         } else {
@@ -97,9 +104,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([$product_name, $category, $price, $stock_quantity, $status, $image]);
+                // Store data to trigger the Product Success Modal
+                $newly_added_product = [
+                    'name'     => $product_name,
+                    'category' => $category,
+                    'price'    => number_format($price, 2),
+                    'stock'    => $stock_quantity,
+                    'status'   => $status,
+                    'image'    => $image
+                ];
                 $success_message = "Product '{$product_name}' successfully added to catalog.";
             } catch (PDOException $e) {
                 $error_message = "Failed to add product: " . $e->getMessage();
+            }
+        }
+    }
+    // Module 1 (Sub-item 2B): Edit Existing Product
+    if (isset($_POST['edit_product'])) {
+        $product_id     = (int)($_POST['product_id'] ?? 0);
+        $product_name   = trim($_POST['product_name'] ?? '');
+        $category       = trim($_POST['category'] ?? '');
+        $price          = (float)($_POST['price'] ?? 0);
+        $stock_quantity = (int)($_POST['stock_quantity'] ?? 0);
+        $status         = $_POST['status'] ?? 'available';
+        $image          = trim($_POST['existing_image'] ?? 'assets/default-food.jpeg');
+        // Check if user uploaded a replacement photo
+        if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['product_image']['tmp_name'];
+            $fileExt = strtolower(pathinfo($_FILES['product_image']['name'], PATHINFO_EXTENSION));
+            if (in_array($fileExt, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $newFileName = 'prod_' . time() . '_' . mt_rand(100, 999) . '.' . $fileExt;
+                $destPath = __DIR__ . '/assets/' . $newFileName;
+                if (move_uploaded_file($fileTmpPath, $destPath)) {
+                    $image = 'assets/' . $newFileName;
+                }
+            }
+        }
+        if ($product_id > 0 && $product_name !== '' && $category !== '' && $price > 0) {
+            try {
+                $stmt = $pdo->prepare("
+                    UPDATE products 
+                    SET product_name = ?, category = ?, price = ?, stock_quantity = ?, status = ?, image = ?
+                    WHERE product_id = ?
+                ");
+                $stmt->execute([$product_name, $category, $price, $stock_quantity, $status, $image, $product_id]);
+                $success_message = "Product '{$product_name}' updated successfully.";
+            } catch (PDOException $e) {
+                $error_message = "Failed to update product: " . $e->getMessage();
+            }
+        }
+    }
+    // Module 1 (Sub-item 2C): Delete Product
+    if (isset($_POST['delete_product'])) {
+        $product_id = (int)($_POST['delete_product_id'] ?? 0);
+        if ($product_id > 0) {
+            try {
+                $stmt = $pdo->prepare("DELETE FROM products WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+                $success_message = "Product #{$product_id} deleted successfully.";
+            } catch (PDOException $e) {
+                $error_message = "Failed to delete product: " . $e->getMessage();
             }
         }
     }
