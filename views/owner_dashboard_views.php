@@ -10,6 +10,7 @@ $salesSummary    = $salesSummary    ?? [];
 $invoices        = $invoices        ?? [];
 $usersList       = $usersList       ?? [];
 
+$newly_added_ingredient = $newly_added_ingredient ?? null;
 $totalSales        = (float)($salesSummary['total_sales'] ?? 0);
 $totalSst          = (float)($salesSummary['total_sst'] ?? 0);
 $totalTransactions = (int)($salesSummary['total_transactions'] ?? 0);
@@ -211,107 +212,142 @@ $todayStr = date('Y-m-d');
                 </div>
             </div>
 
-            <!-- 1A. Halal & Ingredients Ledger (Default View) -->
+                        <!-- 1A. Halal & Ingredients Ledger (Main Full-Width View) -->
             <div id="sec-ingredients" class="content-section">
-                <div class="row g-4">
-                    <div class="col-lg-4">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold text-success">
-                                <i class="bi bi-plus-circle"></i> Add Halal Ingredient
+                
+                <!-- Section Header with Register Button -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1">Halal Ingredient &amp; Batch Compliance</h4>
+                        <p class="text-muted small mb-0">Monitor raw material batches, supplier records, and JAKIM certificate validity</p>
+                    </div>
+                    <button type="button" class="btn btn-success fw-semibold px-3 py-2 shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
+                        <i class="bi bi-plus-lg me-1"></i> Register New Batch
+                    </button>
+                </div>
+
+                <!-- Card Container -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    
+                    <!-- Search Bar & Status Filter Pills Toolbar -->
+                    <div class="card-header bg-white border-bottom p-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <!-- Search Input -->
+                            <div class="input-group" style="max-width: 320px;">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="ingredientSearchInput" class="form-control border-start-0 ps-0" placeholder="Search..." onkeyup="filterIngredients()">
                             </div>
-                            <div class="card-body">
-                                <form method="POST">
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Ingredient Name *</label>
-                                        <input type="text" name="ingredient_name" class="form-control form-control-sm" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Supplier Name *</label>
-                                        <input type="text" name="supplier_name" class="form-control form-control-sm" required>
-                                    </div>
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-6">
-                                            <label class="form-label small fw-bold">Stock Qty *</label>
-                                            <input type="number" step="0.01" name="current_stock" class="form-control form-control-sm" value="0.00" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label small fw-bold">Unit *</label>
-                                            <input type="text" name="unit" class="form-control form-control-sm" placeholder="kg, L, pack" required>
-                                        </div>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Item Expiry Date *</label>
-                                        <input type="date" name="expiry_date" class="form-control form-control-sm" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-bold">Halal Cert No.</label>
-                                        <input type="text" name="halal_cert_no" class="form-control form-control-sm" placeholder="e.g. JAKIM-MS1500-...">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Halal Cert Expiry</label>
-                                        <input type="date" name="cert_expiry_date" class="form-control form-control-sm">
-                                    </div>
-                                    <button type="submit" name="add_ingredient" class="btn btn-success btn-sm w-100">
-                                        <i class="bi bi-save"></i> Save Ingredient
-                                    </button>
-                                </form>
+
+                            <!-- Filter Pills (All, Valid, Expiring Soon, Expired) -->
+                            <div class="d-flex flex-wrap gap-2" id="statusFilterPills">
+                                <?php
+                                    $cntAll = count($ingredients);
+                                    $cntValid = 0;
+                                    $cntExpiring = 0;
+                                    $cntExpired = 0;
+                                    $todayTs = strtotime($todayStr);
+
+                                    foreach ($ingredients as $ing) {
+                                        $exp = $ing['cert_expiry_date'] ?: $ing['expiry_date'];
+                                        $expTs = strtotime($exp);
+                                        $daysLeft = ($expTs - $todayTs) / 86400;
+
+                                        if ($daysLeft < 0) {
+                                            $cntExpired++;
+                                        } elseif ($daysLeft <= 30) {
+                                            $cntExpiring++;
+                                        } else {
+                                            $cntValid++;
+                                        }
+                                    }
+                                ?>
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 filter-pill active" onclick="filterByStatus('all', this)">
+                                    All Batches (<?= $cntAll; ?>)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-pill" onclick="filterByStatus('valid', this)">
+                                    Valid (<?= $cntValid; ?>)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-pill" onclick="filterByStatus('expiring', this)">
+                                    Expiring Soon (<?= $cntExpiring; ?>)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-pill" onclick="filterByStatus('expired', this)">
+                                    Expired (<?= $cntExpired; ?>)
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-8">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-list-check"></i> Ingredient Halal &amp; Stock Ledger</span>
-                                <span class="badge bg-success"><?= count($ingredients); ?> Recorded</span>
-                            </div>
-                            <div class="card-body table-responsive">
-                                <table class="table table-hover align-middle small">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Ingredient</th>
-                                            <th>Supplier</th>
-                                            <th>Stock</th>
-                                            <th>Item Expiry</th>
-                                            <th>Halal Cert</th>
-                                            <th>Cert Status</th>
+
+                    <!-- Main Table -->
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="ingredientTable">
+                            <thead class="table-light text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.5px;">
+                                <tr>
+                                    <th class="ps-4 py-3">Ingredient Name</th>
+                                    <th>Batch Number</th>
+                                    <th>Supplier</th>
+                                    <th>JAKIM Cert No.</th>
+                                    <th>Expiry Date</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($ingredients)): ?>
+                                    <?php foreach ($ingredients as $idx => $ing): ?>
+                                        <?php
+                                            $certExp = $ing['cert_expiry_date'] ?: $ing['expiry_date'];
+                                            $expTs = strtotime($certExp);
+                                            $daysLeft = floor(($expTs - $todayTs) / 86400);
+
+                                            if ($daysLeft < 0) {
+                                                $statusKey = 'expired';
+                                                $statusLabel = 'Expired';
+                                                $badgeStyle = 'background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca;';
+                                                $actionText = '<a href="#" class="text-danger fw-semibold text-decoration-none small" data-bs-toggle="modal" data-bs-target="#addIngredientModal">Renew</a>';
+                                                $timeNotice = abs($daysLeft) . ' days ago';
+                                            } elseif ($daysLeft <= 30) {
+                                                $statusKey = 'expiring';
+                                                $statusLabel = 'Expiring Soon';
+                                                $badgeStyle = 'background-color: #fef3c7; color: #d97706; border: 1px solid #fde68a;';
+                                                $actionText = '<a href="#" class="text-secondary fw-semibold text-decoration-none small" onclick="alert(\'Viewing Cert for: ' . addslashes($ing['ingredient_name']) . '\')">View Cert</a>';
+                                                $timeNotice = 'Expires in ' . $daysLeft . ' days';
+                                            } else {
+                                                $statusKey = 'valid';
+                                                $statusLabel = 'Valid';
+                                                $badgeStyle = 'background-color: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0;';
+                                                $actionText = '<a href="#" class="text-secondary fw-semibold text-decoration-none small" onclick="alert(\'Viewing Cert for: ' . addslashes($ing['ingredient_name']) . '\')">View Cert</a>';
+                                                $timeNotice = date('Y', $expTs);
+                                            }
+
+                                            $batchDisplay = !empty($ing['batch_number']) ? $ing['batch_number'] : ('BTH-' . date('Y') . '-B' . ($idx + 1));
+                                        ?>
+                                        <tr class="ingredient-row" data-status="<?= $statusKey; ?>" data-search="<?= strtolower(htmlspecialchars($ing['ingredient_name'] . ' ' . $ing['supplier_name'] . ' ' . $batchDisplay . ' ' . $ing['halal_cert_no'])); ?>">
+                                            <td class="ps-4 fw-bold text-dark">
+                                                <?= htmlspecialchars($ing['ingredient_name']); ?>
+                                                <div class="text-muted fw-normal small"><?= number_format((float)$ing['current_stock'], 2); ?> <?= htmlspecialchars($ing['unit']); ?></div>
+                                            </td>
+                                            <td class="text-muted font-monospace small"><?= htmlspecialchars($batchDisplay); ?></td>
+                                            <td class="small fw-semibold"><?= htmlspecialchars($ing['supplier_name']); ?></td>
+                                            <td class="font-monospace small text-muted"><?= htmlspecialchars($ing['halal_cert_no'] ?: 'JAKIM.700-2/3/1'); ?></td>
+                                            <td>
+                                                <div class="fw-semibold small"><?= date('d M Y', $expTs); ?></div>
+                                                <small class="text-muted" style="font-size: 11px;"><?= $timeNotice; ?></small>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="rounded-pill px-3 py-1 fw-semibold small" style="<?= $badgeStyle; ?>">
+                                                    <?= $statusLabel; ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <?= $actionText; ?>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (!empty($ingredients)): ?>
-                                            <?php foreach ($ingredients as $ing): ?>
-                                                <?php
-                                                $certExp = $ing['cert_expiry_date'] ?? null;
-                                                $isExpiredCert = $certExp && ($certExp < $todayStr);
-                                                $isExpiredItem = ($ing['expiry_date'] ?? '') < $todayStr;
-                                                ?>
-                                                <tr>
-                                                    <td class="fw-semibold"><?= htmlspecialchars($ing['ingredient_name']); ?></td>
-                                                    <td><?= htmlspecialchars($ing['supplier_name']); ?></td>
-                                                    <td><?= number_format((float)$ing['current_stock'], 2); ?> <?= htmlspecialchars($ing['unit']); ?></td>
-                                                    <td>
-                                                        <span class="<?= $isExpiredItem ? 'text-danger fw-bold' : ''; ?>">
-                                                            <?= htmlspecialchars($ing['expiry_date']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?= htmlspecialchars($ing['halal_cert_no'] ?: 'Unset'); ?></td>
-                                                    <td>
-                                                        <?php if (!$certExp): ?>
-                                                            <span class="badge bg-secondary">No Cert Date</span>
-                                                        <?php elseif ($isExpiredCert): ?>
-                                                            <span class="badge bg-danger">Expired (<?= htmlspecialchars($certExp); ?>)</span>
-                                                        <?php else: ?>
-                                                            <span class="badge bg-success">Valid (<?= htmlspecialchars($certExp); ?>)</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <tr><td colspan="6" class="text-center text-muted py-4">No ingredients recorded yet.</td></tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="7" class="text-center text-muted py-5">No ingredient batches recorded yet. Click "+ Register New Batch" to add one.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -648,6 +684,142 @@ $todayStr = date('Y-m-d');
         </main>
     </div>
 
+    <!-- MODAL 1: Register Raw Ingredient Batch (Matches Image 2) -->
+    <div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark" id="addIngredientModalLabel">Register Raw Ingredient Batch</h5>
+                        <p class="text-muted small mb-0">Manual entry for JAKIM certification tracking &amp; SME compliance</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <form method="POST">
+                    <div class="modal-body p-4">
+                        <!-- Ingredient Name -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Ingredient / Raw Material Name *</label>
+                            <input type="text" name="ingredient_name" class="form-control form-control-lg fs-6 rounded-3" placeholder="e.g. Frozen Boneless Chicken 10kg" required>
+                        </div>
+
+                        <!-- Batch Number & Supplier Name -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Batch Number *</label>
+                                <input type="text" name="batch_number" class="form-control rounded-3" placeholder="e.g. BTH-2026-X09" value="BTH-<?= date('Y'); ?>-B<?= mt_rand(10, 99); ?>" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Supplier Name *</label>
+                                <input type="text" name="supplier_name" class="form-control rounded-3" placeholder="e.g. Ayam Segar Halal Ent" required>
+                            </div>
+                        </div>
+
+                        <!-- Stock & Unit -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Current Stock Quantity *</label>
+                                <input type="number" step="0.01" name="current_stock" class="form-control rounded-3" value="10.00" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Measurement Unit *</label>
+                                <input type="text" name="unit" class="form-control rounded-3" placeholder="kg, L, pack" value="kg" required>
+                            </div>
+                        </div>
+
+                        <!-- JAKIM Cert No & Expiry Dates -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">JAKIM Halal Cert Number *</label>
+                                <input type="text" name="halal_cert_no" class="form-control rounded-3" placeholder="JAKIM.700-2/3/1 ..." required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Cert Expiry Date *</label>
+                                <input type="date" name="cert_expiry_date" class="form-control rounded-3" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Item Material Expiry Date *</label>
+                            <input type="date" name="expiry_date" class="form-control rounded-3" required>
+                        </div>
+
+                        <!-- Upload Box UI -->
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold">Upload Digital Certificate (Optional PDF / Scan)</label>
+                            <div class="border border-2 border-dashed rounded-3 p-4 text-center bg-light" style="cursor: pointer;">
+                                <i class="bi bi-cloud-arrow-up fs-2 text-muted"></i>
+                                <div class="small mt-1 text-muted">Drag &amp; drop JAKIM certificate PDF or <span class="text-success fw-bold">browse</span></div>
+                                <div style="font-size: 11px;" class="text-muted mt-1">PDF, JPG, PNG up to 5MB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                        <button type="button" class="btn btn-light border px-4 rounded-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="add_ingredient" class="btn btn-success px-4 rounded-3 fw-semibold">
+                            Save Batch &amp; Verify
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL 2: Verified Success Modal (Matches Image 3) -->
+    <div class="modal fade" id="ingredientSuccessModal" tabindex="-1" aria-labelledby="ingredientSuccessLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4 text-center">
+                
+                <!-- Close Button -->
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+
+                <!-- Big Green Check Circle Icon -->
+                <div class="my-2">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background-color: #10b981;">
+                        <i class="bi bi-check-lg text-white fs-3"></i>
+                    </div>
+                </div>
+
+                <!-- Title & Verified Tagline -->
+                <h4 class="fw-bold text-dark mt-2 mb-1">
+                    <?= htmlspecialchars($newly_added_ingredient['name'] ?? 'Ingredient'); ?>
+                </h4>
+                <div class="text-muted small mb-3">Verified Halal Raw Material Record</div>
+
+                <!-- Details Two-Column Box -->
+                <div class="border rounded-3 p-3 text-start bg-light mb-4" style="font-size: 0.88rem;">
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Supplier:</span>
+                        <strong class="text-dark"><?= htmlspecialchars($newly_added_ingredient['supplier'] ?? ''); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Batch No:</span>
+                        <span class="font-monospace fw-bold text-dark"><?= htmlspecialchars($newly_added_ingredient['batch_no'] ?? ''); ?></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">JAKIM Ref:</span>
+                        <span class="font-monospace fw-bold text-dark"><?= htmlspecialchars($newly_added_ingredient['jakim_cert_no'] ?? ''); ?></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Valid Until:</span>
+                        <strong class="text-success"><?= htmlspecialchars($newly_added_ingredient['valid_until'] ?? ''); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-top mt-1 pt-1">
+                        <span class="text-muted">Authority:</span>
+                        <span class="text-muted"><?= htmlspecialchars($newly_added_ingredient['authority'] ?? 'JAKIM'); ?></span>
+                    </div>
+                </div>
+
+                <!-- Big Green Done Button -->
+                <button type="button" class="btn btn-success btn-lg w-100 rounded-3 fw-semibold py-2" data-bs-dismiss="modal">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -769,6 +941,45 @@ $todayStr = date('Y-m-d');
 
         updateDateTimeAndDuration();
         setInterval(updateDateTimeAndDuration, 1000);
+
+        // Status Filter (All, Valid, Expiring Soon, Expired)
+        let activeStatusFilter = 'all';
+        function filterByStatus(status, btnEl) {
+            activeStatusFilter = status;
+            document.querySelectorAll('.filter-pill').forEach(b => {
+                b.classList.remove('btn-success', 'active');
+                b.classList.add('btn-outline-secondary');
+            });
+            btnEl.classList.remove('btn-outline-secondary');
+            btnEl.classList.add('btn-success', 'active');
+            applyIngredientFilters();
+        }
+        // Search Filter
+        function filterIngredients() {
+            applyIngredientFilters();
+        }
+        function applyIngredientFilters() {
+            const query = (document.getElementById('ingredientSearchInput')?.value || '').toLowerCase().trim();
+            const rows = document.querySelectorAll('.ingredient-row');
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status');
+                const rowSearch = row.getAttribute('data-search') || '';
+                const matchesStatus = (activeStatusFilter === 'all' || rowStatus === activeStatusFilter);
+                const matchesQuery = query === '' || rowSearch.includes(query);
+                if (matchesStatus && matchesQuery) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        // Auto-trigger Success Modal when new ingredient is recorded
+        <?php if (!empty($newly_added_ingredient)): ?>
+        document.addEventListener("DOMContentLoaded", function() {
+            const successModal = new bootstrap.Modal(document.getElementById('ingredientSuccessModal'));
+            successModal.show();
+        });
+        <?php endif; ?>
     </script>
 </body>
 </html>

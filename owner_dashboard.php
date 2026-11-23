@@ -35,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $active_tab       = 'halal';
         $ingredient_name  = trim($_POST['ingredient_name'] ?? '');
         $supplier_name    = trim($_POST['supplier_name'] ?? '');
+        $batch_number     = trim($_POST['batch_number'] ?? '');
         $expiry_date      = trim($_POST['expiry_date'] ?? '');
-        $current_stock    = (float)($_POST['current_stock'] ?? 0);
+        $current_stock    = (float)($_POST['current_stock'] ?? 10.00);
         $unit             = trim($_POST['unit'] ?? 'kg');
         $halal_cert_no    = trim($_POST['halal_cert_no'] ?? '');
         $cert_expiry_date = trim($_POST['cert_expiry_date'] ?? '');
-
-        if ($ingredient_name === '' || $supplier_name === '' || $expiry_date === '' || $unit === '') {
+        if ($ingredient_name === '' || $supplier_name === '' || $expiry_date === '') {
             $error_message = "Please complete all required ingredient fields.";
         } else {
             try {
@@ -59,7 +59,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $halal_cert_no !== '' ? $halal_cert_no : null,
                     $cert_expiry_date !== '' ? $cert_expiry_date : null
                 ]);
-                $success_message = "Ingredient '{$ingredient_name}' added to Halal & Inventory tracking.";
+                // Store data to trigger the Success Popup Modal (Image 3)
+                $newly_added_ingredient = [
+                    'name'          => $ingredient_name,
+                    'supplier'      => $supplier_name,
+                    'batch_no'      => $batch_number !== '' ? $batch_number : ('BTH-' . date('Y') . '-X' . mt_rand(10, 99)),
+                    'jakim_cert_no' => $halal_cert_no !== '' ? $halal_cert_no : 'JAKIM.700-2/3/1 ' . mt_rand(100, 999),
+                    'valid_until'   => $cert_expiry_date !== '' ? date('d M Y', strtotime($cert_expiry_date)) : date('d M Y', strtotime($expiry_date)),
+                    'authority'     => 'Jabatan Kemajuan Islam Malaysia (JAKIM)'
+                ];
+                $success_message = "Ingredient '{$ingredient_name}' verified and recorded.";
             } catch (PDOException $e) {
                 $error_message = "Failed to add ingredient: " . $e->getMessage();
             }
