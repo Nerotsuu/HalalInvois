@@ -163,3 +163,47 @@ function getPeriodicSalesComparison(PDO $pdo): array {
         return ['daily' => [], 'weekly' => [], 'monthly' => [], 'yearly' => []];
     }
 }
+
+// 1. Get Daily Tax & SST Breakdown Ledger
+function getDailyTaxBreakdown(PDO $pdo, int $limit = 30): array {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                DATE(created_at) AS sale_date,
+                COUNT(*) AS total_receipts,
+                COALESCE(SUM(total_amount), 0) AS gross_sales,
+                COALESCE(SUM(sst_amount), 0) AS sst_total,
+                SUM(CASE WHEN invoice_status = 'valid' THEN 1 ELSE 0 END) AS valid_count,
+                SUM(CASE WHEN invoice_status = 'pending' THEN 1 ELSE 0 END) AS pending_count
+            FROM transactions
+            GROUP BY DATE(created_at)
+            ORDER BY sale_date DESC
+            LIMIT :lim
+        ");
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+// 2. Get Daily Sales vs. 6% SST Collection (Dual-Bar Chart Data)
+function getDailySalesAndSstChartData(PDO $pdo): array {
+    try {
+        $stmt = $pdo->query("
+            SELECT 
+                DATE_FORMAT(created_at, '%a') AS day_short,
+                DATE(created_at) AS raw_date,
+                COALESCE(SUM(total_amount), 0) AS gross_sales,
+                COALESCE(SUM(sst_amount), 0) AS sst_amount
+            FROM transactions
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY raw_date ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
+    }
+}

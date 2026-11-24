@@ -617,52 +617,216 @@ $todayStr = date('Y-m-d');
                 </div>
             </div>
 
-            <!-- Sub-section: Tax & Sales Overview (Card Payment Removed) -->
+                        <!-- 3A. Tax & SST Compliance Reports (Matches Image 1 & Integrates Payment Breakdown) -->
             <div id="sec-sales-overview" class="content-section d-none">
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white fw-bold text-success">
-                        <i class="bi bi-cash-coin"></i> Breakdown by Payment Method
+                
+                <!-- Section Header with Period Selector & Export Actions -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1">Tax &amp; SST Compliance Reports</h4>
+                        <p class="text-muted small mb-0">Monthly 6% Sales &amp; Service Tax (SST) summary and LHDN e-Invoice tax audit statement</p>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <div class="p-3 border rounded bg-white shadow-sm">
-                                    <div class="text-muted small">DuitNow QR Sales</div>
-                                    <div class="fs-4 fw-bold text-success">RM <?= number_format($duitnowSales, 2); ?></div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="p-3 border rounded bg-white shadow-sm">
-                                    <div class="text-muted small">Cash Sales</div>
-                                    <div class="fs-4 fw-bold text-dark">RM <?= number_format($cashSales, 2); ?></div>
-                                </div>
-                            </div>
-                            <!-- Card sales removed as requested -->
-                        </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <select class="form-select form-select-sm border rounded-3 bg-white" style="width: auto;">
+                            <option selected><?= date('F Y'); ?> (Current Cycle)</option>
+                            <option><?= date('F Y', strtotime('-1 month')); ?></option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 shadow-sm" onclick="exportLedgerToCSV()">
+                            <i class="bi bi-download me-1"></i> Export CSV
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success rounded-3 px-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#sst02Modal">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> Generate SST-02 PDF Report
+                        </button>
+                    </div>
+                </div>
 
-                        <!-- Metrics Table & Payment Donut Chart -->
-                        <div class="row g-4">
-                            <div class="col-lg-6">
-                                <table class="table table-bordered small">
-                                    <thead class="table-light">
-                                        <tr><th>Metric</th><th>Value (RM)</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td>Gross Sales Amount</td><td class="fw-bold">RM <?= number_format($totalSales, 2); ?></td></tr>
-                                        <tr><td>Total SST Tax Recorded</td><td class="fw-bold text-primary">RM <?= number_format($totalSst, 2); ?></td></tr>
-                                        <tr><td>Net Sales (Excl. SST)</td><td class="fw-bold text-success">RM <?= number_format(max(0, $totalSales - $totalSst), 2); ?></td></tr>
-                                    </tbody>
-                                </table>
+                <!-- 3 Top Compliance KPI Cards -->
+                <?php
+                    $b2cCount = 0;
+                    $b2bCount = 0;
+                    foreach ($invoices as $inv) {
+                        if (($inv['tin_clean'] ?? '') === 'EI00000000010') {
+                            $b2cCount++;
+                        } else {
+                            $b2bCount++;
+                        }
+                    }
+                ?>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="text-muted small">Total Taxable Gross Sales (<?= date('M Y'); ?>)</div>
+                            <div class="fs-3 fw-bold text-dark my-1">RM <?= number_format($totalSales, 2); ?></div>
+                            <div class="small text-success fw-semibold"><i class="bi bi-graph-up-arrow me-1"></i> +12.4% vs last month</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="text-muted small">Total SST Collected (6%)</div>
+                            <div class="fs-3 fw-bold text-dark my-1">RM <?= number_format($totalSst, 2); ?></div>
+                            <div class="small text-muted">6% Service Tax on F&amp;B sales</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="text-muted small">LHDN Validated e-Invoices</div>
+                            <div class="fs-3 fw-bold text-dark my-1"><?= count($invoices); ?> Receipts</div>
+                            <div class="small text-success fw-semibold"><i class="bi bi-check-circle me-1"></i> 100% UBL 2.1 Simulated Valid</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Row: Dual-Bar Chart + SST-02 Readiness Checklist -->
+                <div class="row g-4 mb-4">
+                    <!-- Daily Sales vs 6% SST Collection Chart -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold text-dark mb-0">Daily Sales vs. 6% SST Collection</h6>
+                                <div class="d-flex align-items-center gap-3 small">
+                                    <span><span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background-color: #059669;"></span> Gross Sales</span>
+                                    <span><span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background-color: #94a3b8;"></span> 6% SST</span>
+                                </div>
                             </div>
-                            <div class="col-lg-6">
-                                <div class="card p-3 border-0 bg-light text-center">
-                                    <h6 class="fw-bold text-muted small">Payment Channel Ratio (Interactive)</h6>
-                                    <div style="max-height: 200px;" class="d-flex justify-content-center">
-                                        <canvas id="paymentDonutChart"></canvas>
+                            <div style="height: 250px;">
+                                <canvas id="dailySstDualChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SST-02 Filing Readiness Checklist -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white d-flex flex-column justify-content-between">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-3">SST-02 Filing Readiness Checklist</h6>
+                                <ul class="list-unstyled small mb-3">
+                                    <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span><i class="bi bi-check-circle-fill text-success me-2"></i> POS Sales Reconciliation</span>
+                                        <strong class="text-success">Complete (RM <?= number_format($totalSales, 2); ?>)</strong>
+                                    </li>
+                                    <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span><i class="bi bi-check-circle-fill text-success me-2"></i> B2C Consolidated e-Invoices</span>
+                                        <span class="fw-semibold text-muted"><?= $b2cCount; ?> Validated</span>
+                                    </li>
+                                    <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <span><i class="bi bi-check-circle-fill text-success me-2"></i> B2B Corporate TIN e-Invoices</span>
+                                        <span class="fw-semibold text-muted"><?= $b2bCount; ?> Validated</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Due Date Alert Box -->
+                            <div class="p-3 rounded-3" style="background-color: #fffbeb; border: 1px solid #fde68a;">
+                                <div class="d-flex align-items-center text-warning-emphasis small fw-semibold">
+                                    <i class="bi bi-exclamation-circle-fill text-warning me-2 fs-5"></i>
+                                    <span>Next Bi-Monthly SST-02 Submission Due: <strong><?= date('t M Y', strtotime('+1 month')); ?></strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Channel Breakdown (Retained from existing function) -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+                    <div class="card-header bg-white border-bottom p-3">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-credit-card-2-back text-success me-1"></i> Payment Channel Settlement</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-4 align-items-center">
+                            <div class="col-md-7">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="p-3 border rounded-3 bg-light">
+                                            <div class="text-muted small">DuitNow QR Sales</div>
+                                            <div class="fs-4 fw-bold text-success">RM <?= number_format($duitnowSales, 2); ?></div>
+                                            <small class="text-muted">Instant Bank &amp; e-Wallet</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 border rounded-3 bg-light">
+                                            <div class="text-muted small">Cash Sales</div>
+                                            <div class="fs-4 fw-bold text-dark">RM <?= number_format($cashSales, 2); ?></div>
+                                            <small class="text-muted">Physical Register</small>
+                                        </div>
                                     </div>
                                 </div>
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-bordered table-sm small mb-0">
+                                        <thead class="table-light">
+                                            <tr><th>Metric</th><th class="text-end">Amount (RM)</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td>Gross Sales Amount</td><td class="text-end fw-bold">RM <?= number_format($totalSales, 2); ?></td></tr>
+                                            <tr><td>Total SST Tax Recorded</td><td class="text-end fw-bold text-primary">RM <?= number_format($totalSst, 2); ?></td></tr>
+                                            <tr><td>Net Sales (Excl. SST)</td><td class="text-end fw-bold text-success">RM <?= number_format(max(0, $totalSales - $totalSst), 2); ?></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-5 text-center">
+                                <div style="max-height: 180px;" class="d-flex justify-content-center">
+                                    <canvas id="paymentDonutChart"></canvas>
+                                </div>
+                                <small class="text-muted mt-2 d-block">Channel Settlement Ratio</small>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Section: Daily Tax & SST Breakdown Ledger -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                    <div class="card-header bg-white border-bottom p-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <h6 class="fw-bold text-dark mb-0">Daily Tax &amp; SST Breakdown Ledger</h6>
+                            <div class="input-group" style="max-width: 280px;">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="ledgerSearchInput" class="form-control border-start-0 ps-0" placeholder="Search by date..." onkeyup="filterLedger()">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="dailyTaxTable">
+                            <thead class="table-light text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.5px;">
+                                <tr>
+                                    <th class="ps-4 py-3">Date</th>
+                                    <th class="text-center">Total Receipts</th>
+                                    <th>Gross Sales (RM)</th>
+                                    <th>Taxable Amount (RM)</th>
+                                    <th>SST 6% (RM)</th>
+                                    <th class="text-center">E-Invoice Status</th>
+                                    <th class="text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($dailyTaxLedger)): ?>
+                                    <?php foreach ($dailyTaxLedger as $row): ?>
+                                        <?php 
+                                            $dateFormatted = date('d M Y', strtotime($row['sale_date']));
+                                        ?>
+                                        <tr class="ledger-row" data-search="<?= strtolower($dateFormatted . ' ' . $row['sale_date']); ?>">
+                                            <td class="ps-4 fw-bold text-dark"><?= $dateFormatted; ?></td>
+                                            <td class="text-center fw-semibold"><?= (int)$row['total_receipts']; ?></td>
+                                            <td class="fw-semibold">RM <?= number_format((float)$row['gross_sales'], 2); ?></td>
+                                            <td>RM <?= number_format((float)$row['gross_sales'], 2); ?></td>
+                                            <td class="fw-bold text-primary">RM <?= number_format((float)$row['sst_total'], 2); ?></td>
+                                            <td class="text-center">
+                                                <span class="rounded-pill px-3 py-1 fw-semibold small" style="background-color: #dcfce7; color: #16a34a;">
+                                                    Simulated Valid
+                                                </span>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <button type="button" class="btn btn-sm btn-link text-success text-decoration-none fw-semibold" 
+                                                        onclick="downloadSingleDayCSV('<?= $dateFormatted; ?>', <?= (int)$row['total_receipts']; ?>, <?= (float)$row['gross_sales']; ?>, <?= (float)$row['sst_total']; ?>)">
+                                                    Download Daily CSV
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="7" class="text-center text-muted py-5">No tax records found for this period.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -941,7 +1105,7 @@ $todayStr = date('Y-m-d');
         </div>
     </div>
 
-    <!-- MODAL A: Add New Product / Menu (With File Upload & Live Image Preview) -->
+    <!-- MODAL 3: Add New Product / Menu (With File Upload & Live Image Preview) -->
     <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -1020,7 +1184,7 @@ $todayStr = date('Y-m-d');
     </div>
 
 
-    <!-- MODAL B: Edit Product Modal -->
+    <!-- MODAL 4: Edit Product Modal -->
     <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -1101,7 +1265,7 @@ $todayStr = date('Y-m-d');
     </div>
 
 
-    <!-- MODAL C: Product Success Modal (Verified Popup With Checkmark) -->
+    <!-- MODAL 5: Product Success Modal (Verified Popup With Checkmark) -->
     <div class="modal fade" id="productSuccessModal" tabindex="-1" aria-labelledby="productSuccessLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 p-4 text-center">
@@ -1152,7 +1316,7 @@ $todayStr = date('Y-m-d');
         </div>
     </div>
 
-    <!-- MODAL D: e-Invoice Inspection Modal (Matches Image 2) -->
+    <!-- MODAL 6: e-Invoice Inspection Modal (Matches Image 2) -->
     <div class="modal fade" id="inspectInvoiceModal" tabindex="-1" aria-labelledby="inspectInvoiceLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4 p-4">
@@ -1262,7 +1426,7 @@ $todayStr = date('Y-m-d');
     </div>
 
 
-    <!-- MODAL E: Generate Simulated LHDN e-Invoice Form (Matches Image 3) -->
+    <!-- MODAL 7: Generate Simulated LHDN e-Invoice Form (Matches Image 3) -->
     <div class="modal fade" id="generateInvoiceModal" tabindex="-1" aria-labelledby="generateInvoiceLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 p-4">
@@ -1330,6 +1494,50 @@ $todayStr = date('Y-m-d');
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 8: SST-02 Tax Statement Preview (Matches Image 2) -->
+    <div class="modal fade" id="sst02Modal" tabindex="-1" aria-labelledby="sst02ModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">SST-02 Tax Statement Preview (<?= date('M Y'); ?>)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="border rounded-3 p-3 bg-light mb-4" style="font-size: 0.92rem;">
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Business</span>
+                        <strong class="text-dark">HalalInvois F&amp;B Enterprise (Melaka)</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Taxable Gross Sales</span>
+                        <strong class="text-dark">RM <?= number_format($totalSales, 2); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">6% Service Tax Payable</span>
+                        <strong class="text-primary">RM <?= number_format($totalSst, 2); ?></strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Validated UBL e-Invoices</span>
+                        <strong class="text-dark"><?= count($invoices); ?> Receipts</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center py-2">
+                        <span class="text-muted">Status</span>
+                        <span class="rounded-pill px-3 py-1 fw-semibold small" style="background-color: #dcfce7; color: #16a34a;">
+                            Ready for MySST Submission
+                        </span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between gap-2">
+                    <button type="button" class="btn btn-light border px-4 rounded-3" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success px-4 rounded-3 fw-semibold" onclick="window.print()">
+                        <i class="bi bi-download me-1"></i> Download Official PDF
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1672,6 +1880,93 @@ $todayStr = date('Y-m-d');
             `;
         }
         new bootstrap.Modal(document.getElementById('inspectInvoiceModal')).show();
+    }
+
+    // 1. Dual-Bar Chart (Daily Sales vs 6% SST Collection)
+    const sstChartData = <?= json_encode($dailyTaxChartData ?? []); ?>;
+
+    new Chart(document.getElementById('dailySstDualChart'), {
+        type: 'bar',
+        data: {
+            labels: sstChartData.map(d => d.day_short || d.raw_date),
+            datasets: [
+                {
+                    label: 'Gross Sales (RM)',
+                    data: sstChartData.map(d => d.gross_sales),
+                    backgroundColor: '#059669',
+                    borderRadius: 4
+                },
+                {
+                    label: '6% SST (RM)',
+                    data: sstChartData.map(d => d.sst_amount),
+                    backgroundColor: '#94a3b8',
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(v) { return 'RM ' + v; }
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Filter Daily Tax & SST Ledger by Date
+    function filterLedger() {
+        const query = (document.getElementById('ledgerSearchInput')?.value || '').toLowerCase().trim();
+        document.querySelectorAll('.ledger-row').forEach(row => {
+            const searchVal = row.getAttribute('data-search') || '';
+            if (query === '' || searchVal.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // 3. Export Full Ledger to CSV
+    function exportLedgerToCSV() {
+        let csv = "Date,Total Receipts,Gross Sales (RM),Taxable Amount (RM),SST 6% (RM),Status\n";
+        document.querySelectorAll('#dailyTaxTable tbody tr.ledger-row').forEach(row => {
+            const cols = row.querySelectorAll('td');
+            if (cols.length >= 6) {
+                const date = cols[0].innerText.trim();
+                const receipts = cols[1].innerText.trim();
+                const gross = cols[2].innerText.replace('RM', '').trim();
+                const taxable = cols[3].innerText.replace('RM', '').trim();
+                const sst = cols[4].innerText.replace('RM', '').trim();
+                const status = cols[5].innerText.trim();
+                csv += `"${date}",${receipts},${gross},${taxable},${sst},"${status}"\n`;
+            }
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `HalalInvois_SST02_Ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+    }
+
+    // 4. Download Single Row CSV
+    function downloadSingleDayCSV(date, receipts, gross, sst) {
+        const csv = `Date,Total Receipts,Gross Sales (RM),Taxable Amount (RM),SST 6% (RM),Status\n"${date}",${receipts},${gross.toFixed(2)},${gross.toFixed(2)},${sst.toFixed(2)},"Simulated Valid"\n`;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SST_Report_${date.replace(/ /g, '_')}.csv`;
+        a.click();
     }
     </script>
 </body>

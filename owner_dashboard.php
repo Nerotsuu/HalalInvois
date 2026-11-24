@@ -288,5 +288,7 @@ $invoices       = getRecentInvoices($pdo, 20);
 $usersList      = getAllUsers($pdo);
 $staffStats     = getStaffPerformanceStats($pdo);
 $periodSales    = getPeriodicSalesComparison($pdo);
+$dailyTaxLedger    = getDailyTaxBreakdown($pdo);
+$dailyTaxChartData = getDailySalesAndSstChartData($pdo);
 
 require_once __DIR__ . '/views/owner_dashboard_views.php';

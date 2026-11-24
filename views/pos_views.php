@@ -177,13 +177,29 @@
                                 </select>
                             </div>
 
-                            <!-- Dynamic DuitNow QR Display Area -->
-                            <div id="duitnow-preview-box" class="card p-2 mb-3 text-center border-danger bg-light d-none">
-                                <div class="small fw-bold text-danger mb-1"><i class="bi bi-qr-code"></i> DuitNow National QR</div>
-                                <div class="d-flex justify-content-center my-1">
-                                    <img id="duitnow-qr-img" src="" alt="DuitNow QR" style="width: 140px; height: 140px;" class="border rounded bg-white p-1">
+                            <!-- Interactive DuitNow QR Box -->
+                            <div id="duitnow-preview-box" class="card p-3 mb-3 text-center border-danger bg-light d-none shadow-sm rounded-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small fw-bold text-danger"><i class="bi bi-qr-code"></i> DuitNow National QR</span>
+                                    <span class="badge bg-warning text-dark"><i class="spinner-grow spinner-grow-sm me-1"></i> Waiting for scan...</span>
                                 </div>
-                                <small class="text-muted" style="font-size: 11px;">Scan with any Malaysian Banking / e-Wallet App</small>
+                                <div class="d-flex justify-content-center my-2">
+                                    <img id="duitnow-qr-img" src="" alt="DuitNow QR" style="width: 160px; height: 160px;" class="border rounded-3 bg-white p-2 shadow-sm">
+                                </div>
+                                <small class="text-muted" style="font-size: 11px;">Scan with your phone's camera / bank app to pay</small>
+                                
+                                <!-- Ngrok Tunnel Config Button (Click to paste your ngrok URL) -->
+                                <div class="mt-2 pt-2 border-top text-start">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted" style="font-size: 10px;">Tunnel Base URL:</span>
+                                        <a href="javascript:void(0)" class="text-decoration-none small" style="font-size: 11px;" onclick="configureTunnelUrl()">
+                                            <i class="bi bi-gear-fill"></i> Change Ngrok URL
+                                        </a>
+                                    </div>
+                                    <div id="tunnel-url-text" class="text-truncate font-monospace text-muted" style="font-size: 10px;">
+                                        https://your-ngrok-url.ngrok-free.app/halalinvois
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Calculation Summary -->
@@ -237,27 +253,27 @@
                                 <div class="small text-muted mt-1">UTeM Cafe & F&B Hub, Melaka, Malaysia</div>
                             </div>
 
-                            <!-- Receipt Metadata -->
+                                                        <!-- Receipt Metadata -->
                             <div class="py-2 border-bottom border-dashed small">
                                 <div class="d-flex justify-content-between">
                                     <span>Receipt No:</span>
-                                    <strong>#TXN-<?= htmlspecialchars($receipt_data['transaction_id'] ?? ''); ?></strong>
+                                    <strong id="receipt-modal-ref">#TXN-<?= htmlspecialchars($receipt_data['transaction_id'] ?? ''); ?></strong>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>LHDN UUID:</span>
-                                    <span class="font-monospace text-truncate" style="max-width: 220px;"><?= htmlspecialchars($receipt_data['lhdn_uuid'] ?? ''); ?></span>
+                                    <span id="receipt-modal-uuid" class="font-monospace text-truncate" style="max-width: 220px;"><?= htmlspecialchars($receipt_data['lhdn_uuid'] ?? ''); ?></span>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Date & Time:</span>
-                                    <span><?= htmlspecialchars(($receipt_data['day'] ?? '') . ', ' . ($receipt_data['date'] ?? '') . ' ' . ($receipt_data['time'] ?? '')); ?></span>
+                                    <span id="receipt-modal-datetime"><?= htmlspecialchars(($receipt_data['day'] ?? '') . ', ' . ($receipt_data['date'] ?? '') . ' ' . ($receipt_data['time'] ?? '')); ?></span>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Cashier:</span>
-                                    <span><?= htmlspecialchars($receipt_data['cashier'] ?? ''); ?></span>
+                                    <span id="receipt-modal-cashier"><?= htmlspecialchars($receipt_data['cashier'] ?? ''); ?></span>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Payment:</span>
-                                    <span class="text-uppercase fw-bold text-success"><?= htmlspecialchars($receipt_data['payment_method'] ?? ''); ?></span>
+                                    <span id="receipt-modal-payment" class="text-uppercase fw-bold text-success"><?= htmlspecialchars($receipt_data['payment_method'] ?? ''); ?></span>
                                 </div>
                             </div>
 
@@ -271,7 +287,7 @@
                                         <th class="text-end">Total</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="receipt-modal-items">
                                     <?php if (!empty($receipt_data['items'])): ?>
                                         <?php foreach ($receipt_data['items'] as $item): ?>
                                         <tr>
@@ -289,15 +305,15 @@
                             <div class="border-top border-dashed pt-2 small">
                                 <div class="d-flex justify-content-between">
                                     <span>Subtotal (Excl. Tax):</span>
-                                    <span>RM <?= number_format($receipt_data['subtotal'] ?? 0, 2); ?></span>
+                                    <span id="receipt-modal-subtotal">RM <?= number_format($receipt_data['subtotal'] ?? 0, 2); ?></span>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>SST (6%):</span>
-                                    <span>RM <?= number_format($receipt_data['sst_amount'] ?? 0, 2); ?></span>
+                                    <span id="receipt-modal-sst">RM <?= number_format($receipt_data['sst_amount'] ?? 0, 2); ?></span>
                                 </div>
                                 <div class="d-flex justify-content-between fs-5 fw-bold text-dark border-top pt-2 mt-1">
                                     <span>Grand Total:</span>
-                                    <span>RM <?= number_format($receipt_data['grand_total'] ?? 0, 2); ?></span>
+                                    <span id="receipt-modal-total">RM <?= number_format($receipt_data['grand_total'] ?? 0, 2); ?></span>
                                 </div>
                             </div>
 
@@ -359,161 +375,283 @@
 
         // 3. Dynamic DuitNow QR Generation based on Cart Total
         function togglePaymentMethod() {
-            const method = document.getElementById('payment_method').value;
-            const qrBox = document.getElementById('duitnow-preview-box');
-            const qrImg = document.getElementById('duitnow-qr-img');
-            
-            // Calculate total from cart
-            let total = 0;
-            cart.forEach(item => total += (item.price * item.quantity));
-            let sst = total * 0.06;
-            let grandTotal = total + sst;
-            if (method === 'duitnow_qr' && cart.length > 0) {
-                qrBox.classList.remove('d-none');
-                // Generates dynamic DuitNow QR mockup code with amount
-                const qrPayload = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=DUITNOW-HALALINVOIS-RM${grandTotal.toFixed(2)}`;
-                qrImg.src = qrPayload;
-            } else {
-                qrBox.classList.add('d-none');
-            }
-        }
+        const method = document.getElementById('payment_method').value;
+        const qrBox = document.getElementById('duitnow-preview-box');
+        const qrImg = document.getElementById('duitnow-qr-img');
+        const checkoutBtn = document.getElementById('checkout-btn');
 
-        // 4. Auto-popup Receipt Modal if transaction was completed
-        <?php if (!empty($receipt_data)): ?>
-        document.addEventListener("DOMContentLoaded", function() {
-            var receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
-            receiptModal.show();
-        });
-        <?php endif; ?>
+        let subtotal = 0;
+        cart.forEach(item => subtotal += (item.price * item.quantity));
+        let sst = subtotal * 0.06;
+        let grandTotal = subtotal + sst;
 
-        function updateDateTimeAndDuration() {
-            const now = new Date();
-            // 1. Format Day & Date (e.g. Saturday, 21 Nov 2026)
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = days[now.getDay()];
-            const dateFormatted = now.toLocaleDateString('en-MY', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-            });
-            document.getElementById('live-day-date').innerText = `${dayName}, ${dateFormatted}`;
-            // 2. Format Live Clock (e.g. 03:45:12 AM)
-            const timeFormatted = now.toLocaleTimeString('en-MY', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-            document.getElementById('live-clock').innerText = timeFormatted;
-            // 3. Time Taken / Session Duration Counter (HH:MM:SS)
-            const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - loginTimestamp) / 1000));
-            const hours = Math.floor(elapsedSeconds / 3600);
-            const minutes = Math.floor((elapsedSeconds % 3600) / 60);
-            const seconds = elapsedSeconds % 60;
-            const pad = (n) => String(n).padStart(2, '0');
-            document.getElementById('live-session-duration').innerText = 
-                `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
-        }
-        // Run immediately and update every second
-        updateDateTimeAndDuration();
-        setInterval(updateDateTimeAndDuration, 1000);
-
-        function addToCart(productId, productName, price, stock) {
-            let existingItem = cart.find(item => item.product_id === productId);
-            
-            if (existingItem) {
-                if (existingItem.quantity < stock) {
-                    existingItem.quantity++;
-                } else {
-                    alert("Not enough stock available!");
-                    return;
-                }
-            } else {
-                if (stock > 0) {
-                    cart.push({
-                        product_id: productId,
-                        product_name: productName,
-                        price: parseFloat(price),
-                        quantity: 1,
-                        stock: stock
-                    });
-                } else {
-                    alert("Product is out of stock!");
-                    return;
-                }
-            }
-            renderCart();
-        }
-
-        function updateQuantity(productId, change) {
-            let item = cart.find(item => item.product_id === productId);
-            if (item) {
-                item.quantity += change;
-                if (item.quantity <= 0) {
-                    cart = cart.filter(i => i.product_id !== productId);
-                } else if (item.quantity > item.stock) {
-                    item.quantity = item.stock;
-                    alert("Reached maximum available stock.");
-                }
-            }
-            renderCart();
-        }
-
-        function clearCart() {
-            cart = [];
-            renderCart();
-        }
-
-        function renderCart() {
-            let cartList = document.getElementById('cart-list');
-            let subtotalEl = document.getElementById('summary-subtotal');
-            let totalEl = document.getElementById('summary-total');
-            let checkoutBtn = document.getElementById('checkout-btn');
-            let cartJsonInput = document.getElementById('cart_json');
-
-            cartList.innerHTML = '';
-
-            if (cart.length === 0) {
-                cartList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Cart is empty</li>';
-                subtotalEl.innerText = 'RM 0.00';
-                totalEl.innerText = 'RM 0.00';
+        if (method === 'duitnow_qr' && cart.length > 0) {
+            qrBox.classList.remove('d-none');
+            // Disable manual button to avoid duplicate checkout while QR is active
+            if (checkoutBtn) {
                 checkoutBtn.disabled = true;
-                cartJsonInput.value = '';
+                checkoutBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Waiting for Phone Scan & Pay...';
+            }
+
+            // Create pending order session via AJAX
+            fetch('create_qr_order.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cart: cart,
+                    total_amount: grandTotal,
+                    sst_amount: sst,
+                    user_id: <?= (int)$_SESSION['user_id'] ?>
+                })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    liveOrderId = res.order_id;
+                    const customerPayUrl = `${tunnelBaseUrl}/customer_pay.php?order_id=${liveOrderId}`;
+                    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(customerPayUrl)}`;
+                    startPaymentPolling(liveOrderId);
+                }
+            })
+            .catch(err => console.error("Error creating QR order:", err));
+        } else {
+            qrBox.classList.add('d-none');
+            if (checkoutBtn && cart.length > 0) {
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = '<i class="bi bi-receipt"></i> Complete & Simulate e-Invoice';
+            }
+            if (livePollInterval) clearInterval(livePollInterval);
+        }
+    }
+
+    // 4. Auto-popup Receipt Modal if transaction was completed
+    <?php if (!empty($receipt_data)): ?>
+    document.addEventListener("DOMContentLoaded", function() {
+        var receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+        receiptModal.show();
+    });
+    <?php endif; ?>
+
+    function updateDateTimeAndDuration() {
+        const now = new Date();
+        // 1. Format Day & Date (e.g. Saturday, 21 Nov 2026)
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = days[now.getDay()];
+        const dateFormatted = now.toLocaleDateString('en-MY', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+        document.getElementById('live-day-date').innerText = `${dayName}, ${dateFormatted}`;
+        // 2. Format Live Clock (e.g. 03:45:12 AM)
+        const timeFormatted = now.toLocaleTimeString('en-MY', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        document.getElementById('live-clock').innerText = timeFormatted;
+        // 3. Time Taken / Session Duration Counter (HH:MM:SS)
+        const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - loginTimestamp) / 1000));
+        const hours = Math.floor(elapsedSeconds / 3600);
+        const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+        const seconds = elapsedSeconds % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        document.getElementById('live-session-duration').innerText = 
+            `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+    }
+    // Run immediately and update every second
+    updateDateTimeAndDuration();
+    setInterval(updateDateTimeAndDuration, 1000);
+
+    function addToCart(productId, productName, price, stock) {
+        let existingItem = cart.find(item => item.product_id === productId);
+        
+        if (existingItem) {
+            if (existingItem.quantity < stock) {
+                existingItem.quantity++;
+            } else {
+                alert("Not enough stock available!");
                 return;
             }
+        } else {
+            if (stock > 0) {
+                cart.push({
+                    product_id: productId,
+                    product_name: productName,
+                    price: parseFloat(price),
+                    quantity: 1,
+                    stock: stock
+                });
+            } else {
+                alert("Product is out of stock!");
+                return;
+            }
+        }
+        renderCart();
+    }
 
-            let subtotal = 0;
-            cart.forEach(item => {
-                let itemTotal = item.price * item.quantity;
-                subtotal += itemTotal;
+    function updateQuantity(productId, change) {
+        let item = cart.find(item => item.product_id === productId);
+        if (item) {
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.product_id !== productId);
+            } else if (item.quantity > item.stock) {
+                item.quantity = item.stock;
+                alert("Reached maximum available stock.");
+            }
+        }
+        renderCart();
+    }
 
-                let li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                li.innerHTML = `
-                    <div>
-                        <h6 class="mb-0 text-dark">${item.product_name}</h6>
-                        <small class="text-muted">RM ${item.price.toFixed(2)} x ${item.quantity}</small>
-                    </div>
-                    <div class="btn-group btn-group-sm align-items-center">
-                        <span class="fw-bold me-2">RM ${itemTotal.toFixed(2)}</span>
-                        <button type="button" class="btn btn-outline-secondary px-2" onclick="updateQuantity(${item.product_id}, -1)">-</button>
-                        <button type="button" class="btn btn-outline-secondary px-2" onclick="updateQuantity(${item.product_id}, 1)">+</button>
-                    </div>
-                `;
-                cartList.appendChild(li);
-            });
+    function clearCart() {
+        cart = [];
+        renderCart();
+    }
 
-            const sstRate = 0.06; // Match $sst_rate in pos.php
-            let sst = subtotal * sstRate;
-            let grandTotal = subtotal + sst;
+    function renderCart() {
+        let cartList = document.getElementById('cart-list');
+        let subtotalEl = document.getElementById('summary-subtotal');
+        let totalEl = document.getElementById('summary-total');
+        let checkoutBtn = document.getElementById('checkout-btn');
+        let cartJsonInput = document.getElementById('cart_json');
 
-            subtotalEl.innerText = 'RM ' + subtotal.toFixed(2);
-            document.getElementById('summary-sst').innerText = 'RM ' + sst.toFixed(2);
-            totalEl.innerText = 'RM ' + grandTotal.toFixed(2);
-            checkoutBtn.disabled = false;
-            cartJsonInput.value = JSON.stringify(cart);
+        cartList.innerHTML = '';
+
+        if (cart.length === 0) {
+            cartList.innerHTML = '<li class="list-group-item text-center text-muted py-3">Cart is empty</li>';
+            subtotalEl.innerText = 'RM 0.00';
+            totalEl.innerText = 'RM 0.00';
+            checkoutBtn.disabled = true;
+            cartJsonInput.value = '';
+            return;
+        }
+
+        let subtotal = 0;
+        cart.forEach(item => {
+            let itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+
+            let li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `
+                <div>
+                    <h6 class="mb-0 text-dark">${item.product_name}</h6>
+                    <small class="text-muted">RM ${item.price.toFixed(2)} x ${item.quantity}</small>
+                </div>
+                <div class="btn-group btn-group-sm align-items-center">
+                    <span class="fw-bold me-2">RM ${itemTotal.toFixed(2)}</span>
+                    <button type="button" class="btn btn-outline-secondary px-2" onclick="updateQuantity(${item.product_id}, -1)">-</button>
+                    <button type="button" class="btn btn-outline-secondary px-2" onclick="updateQuantity(${item.product_id}, 1)">+</button>
+                </div>
+            `;
+            cartList.appendChild(li);
+        });
+
+        const sstRate = 0.06; // Match $sst_rate in pos.php
+        let sst = subtotal * sstRate;
+        let grandTotal = subtotal + sst;
+
+        subtotalEl.innerText = 'RM ' + subtotal.toFixed(2);
+        document.getElementById('summary-sst').innerText = 'RM ' + sst.toFixed(2);
+        totalEl.innerText = 'RM ' + grandTotal.toFixed(2);
+        checkoutBtn.disabled = false;
+        cartJsonInput.value = JSON.stringify(cart);
+        togglePaymentMethod();
+    }
+
+    // Ngrok Base URL Configuration
+    let tunnelBaseUrl = localStorage.getItem('halalinvois_tunnel_url') || (window.location.origin + '/halalinvois');
+    document.getElementById('tunnel-url-text').innerText = tunnelBaseUrl;
+
+    function configureTunnelUrl() {
+        const current = localStorage.getItem('halalinvois_tunnel_url') || tunnelBaseUrl;
+        const input = prompt("Paste your ngrok HTTPS URL (e.g. https://abc-123.ngrok-free.app/halalinvois):", current);
+        if (input && input.trim() !== '') {
+            tunnelBaseUrl = input.trim().replace(/\/+$/, '');
+            localStorage.setItem('halalinvois_tunnel_url', tunnelBaseUrl);
+            document.getElementById('tunnel-url-text').innerText = tunnelBaseUrl;
             togglePaymentMethod();
         }
+    }
+
+    let liveOrderId = null;
+    let livePollInterval = null;
+
+
+    // Poll laptop backend until phone pays
+    function startPaymentPolling(orderId) {
+        if (livePollInterval) clearInterval(livePollInterval);
+
+        livePollInterval = setInterval(function() {
+            if (!orderId) return;
+
+            fetch('check_payment_status.php?order_id=' + encodeURIComponent(orderId))
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'paid') {
+                        clearInterval(livePollInterval);
+                        livePollInterval = null;
+
+                        // Automatically fill and show the Digital Receipt Modal on the laptop!
+                        showReceiptModalFromMobile(data.receipt);
+                        clearCart();
+                    }
+                })
+                .catch(err => console.error(err));
+        }, 1500);
+    }
+
+    // Populates and displays the receipt modal dynamically when customer pays on phone
+    function showReceiptModalFromMobile(r) {
+        const modalEl = document.getElementById('receiptModal');
+        if (!modalEl || !r) return;
+
+        // 1. Fill metadata
+        const refEl = document.getElementById('receipt-modal-ref');
+        const uuidEl = document.getElementById('receipt-modal-uuid');
+        const dtEl = document.getElementById('receipt-modal-datetime');
+        const cashierEl = document.getElementById('receipt-modal-cashier');
+        const payEl = document.getElementById('receipt-modal-payment');
+
+        if (refEl) refEl.innerText = r.receipt_ref || ('#TXN-' + r.transaction_id);
+        if (uuidEl) uuidEl.innerText = r.lhdn_uuid || 'Pending e-Invoice Validation';
+        if (dtEl) dtEl.innerText = `${r.day || ''}, ${r.date || ''} ${r.time || ''}`;
+        if (cashierEl) cashierEl.innerText = r.cashier || 'Cashier';
+        if (payEl) payEl.innerText = (r.payment_method || 'duitnow_qr').toUpperCase();
+
+        // 2. Populate purchased items list
+        const itemsTbody = document.getElementById('receipt-modal-items');
+        if (itemsTbody) {
+            itemsTbody.innerHTML = '';
+            if (r.items && r.items.length > 0) {
+                r.items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.name}</td>
+                        <td class="text-center">${item.qty}</td>
+                        <td class="text-end">RM ${parseFloat(item.price).toFixed(2)}</td>
+                        <td class="text-end">RM ${parseFloat(item.subtotal).toFixed(2)}</td>
+                    `;
+                    itemsTbody.appendChild(tr);
+                });
+            }
+        }
+
+        // 3. Populate totals
+        const subtotalEl = document.getElementById('receipt-modal-subtotal');
+        const sstEl = document.getElementById('receipt-modal-sst');
+        const totalEl = document.getElementById('receipt-modal-total');
+
+        if (subtotalEl) subtotalEl.innerText = 'RM ' + parseFloat(r.subtotal).toFixed(2);
+        if (sstEl) sstEl.innerText = 'RM ' + parseFloat(r.sst_amount).toFixed(2);
+        if (totalEl) totalEl.innerText = 'RM ' + parseFloat(r.grand_total).toFixed(2);
+
+        // 4. Open the modal
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
     </script>
 </body>
 </html>

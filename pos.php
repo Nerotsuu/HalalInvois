@@ -10,6 +10,14 @@ $username = $_SESSION['username'] ?? 'Cashier';
 $user_role = $_SESSION['role'] ?? 'cashier';
 $login_time = $_SESSION['login_time'] ?? time(); // Fallback to now if not set
 
+// Retrieve flash receipt and messages from session (if redirected after checkout)
+$receipt_data    = $_SESSION['receipt_data'] ?? null;
+unset($_SESSION['receipt_data']);
+$success_message = $_SESSION['success_message'] ?? '';
+unset($_SESSION['success_message']);
+$error_message   = $_SESSION['error_message'] ?? '';
+unset($_SESSION['error_message']);
+
 // Correct path to db.php inside your config folder
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
@@ -75,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                 ];
             }
             $pdo->commit();
-            // Prepare digital receipt data for view
+            // Prepare digital receipt data for session
             $receipt_data = [
                 'transaction_id' => $transaction_id,
                 'lhdn_uuid'      => 'Pending e-Invoice Validation',
@@ -90,10 +98,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                 'day'            => date('l'),
                 'time'           => date('h:i:s A')
             ];
-            $success_message = "Transaction #{$transaction_id} successful! LHDN UUID: " . $lhdn_uuid;
+            // PRG (Post-Redirect-Get) Pattern: Redirect so F5 / reload NEVER repeats the order
+            $_SESSION['receipt_data'] = $receipt_data;
+            $_SESSION['success_message'] = "Transaction #{$transaction_id} successful! LHDN UUID: " . $lhdn_uuid;
+            header("Location: pos.php");
+            exit();
         } catch (Exception $e) {
             $pdo->rollBack();
-            $error_message = "Checkout failed: " . $e->getMessage();
+            $_SESSION['error_message'] = "Checkout failed: " . $e->getMessage();
+            header("Location: pos.php");
+            exit();
         }
     } else {
         $error_message = "Your cart is empty.";
