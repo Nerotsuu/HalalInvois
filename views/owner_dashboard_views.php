@@ -474,41 +474,142 @@ $todayStr = date('Y-m-d');
                 </div>
             </div>
 
-            <!-- 2. LHDN e-Invoicing Simulation Records -->
+                        <!-- 2. Simulated LHDN e-Invoicing Hub (Matches Image 1) -->
             <div id="sec-lhdn" class="content-section d-none">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white fw-bold text-success d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-upc-scan"></i> Simulated LHDN e-Invoice Records (UBL 2.1 Standard)</span>
-                        <span class="badge bg-success"><?= count($invoices); ?> Invoices</span>
+                
+                <!-- Section Header with Generate Button -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1">Simulated LHDN e-Invoicing Hub</h4>
+                        <p class="text-muted small mb-0">Convert POS sales transactions into simulated LHDN UBL 2.1 digital invoices with mock UUID validation tokens and QR codes.</p>
                     </div>
-                    <div class="card-body table-responsive">
-                        <table class="table table-striped align-middle small">
-                            <thead class="table-light">
+                    <button type="button" class="btn btn-success fw-semibold px-3 py-2 shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#generateInvoiceModal">
+                        <i class="bi bi-plus-lg me-1"></i> Generate e-Invoice from POS
+                    </button>
+                </div>
+
+                <!-- 3 Top Metric KPI Cards -->
+                <?php
+                    $validCount   = 0;
+                    $pendingCount = 0;
+                    $totalTaxSst  = 0;
+                    $pendingList  = [];
+
+                    foreach ($invoices as $inv) {
+                        $totalTaxSst += (float)$inv['sst_amount'];
+                        if ($inv['status_clean'] === 'valid') {
+                            $validCount++;
+                        } else {
+                            $pendingCount++;
+                            $pendingList[] = $inv;
+                        }
+                    }
+                    $latestPendingRef = !empty($pendingList) ? $pendingList[0]['ref_no'] : 'None';
+                ?>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="text-muted small">Total Simulated e-Invoices</div>
+                            <div class="fs-3 fw-bold text-dark my-1"><?= $validCount; ?></div>
+                            <div class="small text-success fw-semibold"><i class="bi bi-check-circle me-1"></i> All UBL 2.1 compliant</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="text-muted small">Pending POS Conversion</div>
+                            <div class="fs-3 fw-bold text-dark my-1"><?= $pendingCount; ?></div>
+                            <div class="small text-warning fw-semibold"><i class="bi bi-hourglass-split me-1"></i> <?= htmlspecialchars($latestPendingRef); ?> ready</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
+                            <div class="text-muted small">Total Tax (SST) Reported</div>
+                            <div class="fs-3 fw-bold text-dark my-1">RM <?= number_format($totalTaxSst, 2); ?></div>
+                            <div class="small text-muted">6% &amp; 8% calculated</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main e-Invoicing Card -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    
+                    <!-- Search Bar & Filter Pills -->
+                    <div class="card-header bg-white border-bottom p-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div class="input-group" style="max-width: 380px;">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="invoiceSearchInput" class="form-control border-start-0 ps-0" placeholder="Search by Receipt no, Mock UUID, or Buyer TIN..." onkeyup="filterInvoices()">
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2" id="invoiceFilterPills">
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 invoice-pill active" onclick="filterInvoicesByStatus('all', this)">
+                                    All Records (<?= count($invoices); ?>)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 invoice-pill" onclick="filterInvoicesByStatus('valid', this)">
+                                    Simulated Valid (<?= $validCount; ?>)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 invoice-pill" onclick="filterInvoicesByStatus('pending', this)">
+                                    Pending Conversion (<?= $pendingCount; ?>)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Table -->
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="invoiceTable">
+                            <thead class="table-light text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.5px;">
                                 <tr>
-                                    <th>Txn ID</th>
-                                    <th>Simulated LHDN UUID</th>
-                                    <th>Cashier</th>
-                                    <th>Payment</th>
-                                    <th>SST (RM)</th>
+                                    <th class="ps-4 py-3">Receipt Ref</th>
+                                    <th>LHDN Mock UUID</th>
+                                    <th>Date &amp; Time</th>
+                                    <th>Buyer TIN</th>
                                     <th>Total (RM)</th>
-                                    <th>Timestamp</th>
+                                    <th>SST (RM)</th>
+                                    <th class="text-end pe-4">Validation Status &amp; Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (!empty($invoices)): ?>
                                     <?php foreach ($invoices as $inv): ?>
-                                        <tr>
-                                            <td>#<?= (int)$inv['transaction_id']; ?></td>
-                                            <td><code><?= htmlspecialchars($inv['lhdn_uuid'] ?? 'PENDING'); ?></code></td>
-                                            <td><?= htmlspecialchars($inv['username'] ?? 'N/A'); ?></td>
-                                            <td><span class="badge bg-info text-dark text-uppercase"><?= htmlspecialchars($inv['payment_method']); ?></span></td>
-                                            <td><?= number_format((float)$inv['sst_amount'], 2); ?></td>
-                                            <td class="fw-bold">RM <?= number_format((float)$inv['total_amount'], 2); ?></td>
-                                            <td><?= htmlspecialchars($inv['created_at']); ?></td>
+                                        <?php 
+                                            $isValid = ($inv['status_clean'] === 'valid');
+                                            $createdFormatted = date('d M Y, h:i A', strtotime($inv['created_at']));
+                                            $jsonEncodedInv = htmlspecialchars(json_encode($inv), ENT_QUOTES, 'UTF-8');
+                                        ?>
+                                        <tr class="invoice-row" data-status="<?= $inv['status_clean']; ?>" data-search="<?= strtolower(htmlspecialchars($inv['ref_no'] . ' ' . $inv['lhdn_uuid'] . ' ' . $inv['tin_clean'] . ' ' . $inv['buyer_clean'])); ?>">
+                                            <td class="ps-4 fw-bold text-dark"><?= htmlspecialchars($inv['ref_no']); ?></td>
+                                            <td>
+                                                <?php if ($isValid): ?>
+                                                    <code class="text-dark small font-monospace"><?= htmlspecialchars($inv['lhdn_uuid']); ?></code>
+                                                <?php else: ?>
+                                                    <span class="text-muted small fst-italic">Awaiting UBL conversion...</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="small fw-semibold text-muted"><?= $createdFormatted; ?></td>
+                                            <td>
+                                                <div class="fw-semibold small text-dark"><?= htmlspecialchars($inv['tin_clean']); ?></div>
+                                                <small class="text-muted" style="font-size: 11px;"><?= htmlspecialchars($inv['buyer_clean']); ?></small>
+                                            </td>
+                                            <td class="fw-bold text-dark"><?= number_format((float)$inv['total_amount'], 2); ?></td>
+                                            <td class="small text-muted"><?= number_format((float)$inv['sst_amount'], 2); ?></td>
+                                            <td class="text-end pe-4">
+                                                <div>
+                                                    <?php if ($isValid): ?>
+                                                        <span class="text-success fw-bold small"><i class="bi bi-dot fs-5 align-middle"></i> Valid</span>
+                                                    <?php else: ?>
+                                                        <span class="text-warning fw-bold small"><i class="bi bi-dot fs-5 align-middle"></i> Pending</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 py-0 text-secondary mt-1 shadow-sm" 
+                                                        onclick='openInspectModal(<?= $jsonEncodedInv; ?>)'>
+                                                    Inspect
+                                                </button>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <tr><td colspan="7" class="text-center text-muted py-4">No transactions found yet. Complete a checkout in POS terminal to generate an invoice.</td></tr>
+                                    <tr><td colspan="7" class="text-center text-muted py-5">No transactions recorded yet.</td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -1051,6 +1152,188 @@ $todayStr = date('Y-m-d');
         </div>
     </div>
 
+    <!-- MODAL D: e-Invoice Inspection Modal (Matches Image 2) -->
+    <div class="modal fade" id="inspectInvoiceModal" tabindex="-1" aria-labelledby="inspectInvoiceLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4">
+                
+                <!-- Modal Top Header -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-dot fs-4 text-success align-middle"></i> e-Invoice Inspection &bull; <span id="insp_header_ref">#INV-1043</span>
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Printable Official Invoice Container -->
+                <div class="border rounded-4 p-4 bg-white" id="printableInvoiceCard">
+                    
+                    <!-- Company & Invoice Header -->
+                    <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h4 class="fw-bold text-success mb-0"><i class="bi bi-shield-check"></i> HalalInvois</h4>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">E-INVOICE (01)</span>
+                            </div>
+                            <div class="fw-bold text-dark">D'Melaka Food &amp; Supplies Sdn Bhd</div>
+                            <small class="text-muted">Lot 14, Kawasan Perindustrian Durian Tunggal, 76100 Melaka</small>
+                            <div class="small text-muted mt-1">
+                                <strong>TIN:</strong> C25881029010 &nbsp;|&nbsp; <strong>SST Reg:</strong> W10-2601-32000145
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <h4 class="fw-bold text-dark mb-0" id="insp_receipt_ref">#INV-1043</h4>
+                            <div class="small text-muted" id="insp_datetime">13 Nov 2026, 11:09 AM</div>
+                            <div class="mt-2" id="insp_status_badge">
+                                <span class="badge bg-warning-subtle text-warning border px-3 py-1">Pending Conversion</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Two-Column Meta Box (Buyer & Validation Token) -->
+                    <div class="row g-3 bg-light rounded-3 p-3 mb-3">
+                        <div class="col-md-6 border-end">
+                            <div class="text-uppercase text-muted fw-bold" style="font-size: 11px;">BUYER DETAILS</div>
+                            <div class="fw-bold text-dark mt-1" id="insp_buyer_name">Walk-in Customer (General Public)</div>
+                            <div class="small text-muted">Buyer TIN: <span class="font-monospace fw-bold" id="insp_buyer_tin">EI00000000010</span></div>
+                        </div>
+                        <div class="col-md-6 ps-md-4">
+                            <div class="text-uppercase text-muted fw-bold" style="font-size: 11px;">LHDN VALIDATION TOKEN</div>
+                            <div class="fw-bold text-dark font-monospace small mt-1 text-truncate" id="insp_lhdn_token">Pending UBL 2.1 Conversion</div>
+                            <div class="small text-muted" id="insp_validated_node">Validated: Sandbox Node MY-02</div>
+                        </div>
+                    </div>
+
+                    <!-- Line Items Table -->
+                    <div class="mb-3">
+                        <div class="text-uppercase text-muted fw-bold mb-2" style="font-size: 11px;">LINE ITEMS</div>
+                        <table class="table table-sm table-borderless align-middle small mb-0">
+                            <thead class="border-bottom text-muted">
+                                <tr>
+                                    <th>Description</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Amount (RM)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="insp_items_tbody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bottom Summary & QR Verification -->
+                    <div class="row align-items-center border-top pt-3">
+                        <div class="col-md-7">
+                            <div class="d-flex align-items-center gap-3 p-2 border rounded-3 bg-light">
+                                <img id="insp_qr_img" src="" alt="LHDN QR" style="width: 80px; height: 80px;" class="border bg-white p-1 rounded">
+                                <div style="font-size: 11px;">
+                                    <div class="fw-bold text-dark">LHDN Verification QR</div>
+                                    <div class="text-muted">Scan to verify UBL 2.1 digital signature &amp; UUID</div>
+                                    <div class="font-monospace text-success mt-1 text-truncate" style="max-width: 220px;" id="insp_qr_ref">REF: PENDING</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5 text-end">
+                            <div class="d-flex justify-content-between text-muted small mb-1">
+                                <span>Subtotal:</span>
+                                <span id="insp_subtotal">RM 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small mb-1">
+                                <span>SST (6%):</span>
+                                <span id="insp_sst">RM 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between fs-5 fw-bold text-dark border-top pt-1">
+                                <span>Grand Total:</span>
+                                <span id="insp_grand_total">RM 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-2">
+                    <button type="button" class="btn btn-secondary px-4 rounded-3" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success px-4 rounded-3 fw-semibold" onclick="window.print()">
+                        <i class="bi bi-download me-1"></i> Download Official PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL E: Generate Simulated LHDN e-Invoice Form (Matches Image 3) -->
+    <div class="modal fade" id="generateInvoiceModal" tabindex="-1" aria-labelledby="generateInvoiceLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4">
+                <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-3">
+                    <h5 class="fw-bold text-dark mb-0">Generate Simulated LHDN e-Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form method="POST">
+                    <!-- 1. Select Pending POS Receipt -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Select Pending POS Receipt</label>
+                        <select name="transaction_id" class="form-select form-select-lg fs-6 rounded-3" required>
+                            <?php if (!empty($pendingList)): ?>
+                                <?php foreach ($pendingList as $p): ?>
+                                    <option value="<?= (int)$p['transaction_id']; ?>">
+                                        <?= htmlspecialchars($p['ref_no']); ?> (RM <?= number_format((float)$p['total_amount'], 2); ?>) &bull; <?= htmlspecialchars(date('d M, h:i A', strtotime($p['created_at']))); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="">No pending POS receipts available</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+
+                    <!-- 2. Invoice Type Radio Buttons -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Invoice Type</label>
+                        <div class="border rounded-3 p-3 mb-2 bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="invoice_type" id="type_b2c" value="b2c" checked onclick="toggleCorporateTin(false)">
+                                <label class="form-check-label fw-bold text-dark small" for="type_b2c">
+                                    B2C Walk-in Customer (Auto TIN: EI00000000010)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="border rounded-3 p-3 bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="invoice_type" id="type_b2b" value="b2b" onclick="toggleCorporateTin(true)">
+                                <label class="form-check-label fw-bold text-dark small" for="type_b2b">
+                                    B2B Corporate Buyer TIN
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Buyer Corporate Details (Toggled if B2B) -->
+                    <div id="corporateTinBox" class="mb-4 d-none">
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold">Buyer Corporate TIN</label>
+                            <input type="text" name="buyer_corporate_tin" class="form-control rounded-3" placeholder="e.g. C2584563200">
+                        </div>
+                        <div>
+                            <label class="form-label small fw-bold">Corporate Company Name</label>
+                            <input type="text" name="buyer_corporate_name" class="form-control rounded-3" placeholder="e.g. Koperasi Belia Melaka Berhad">
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between align-items-center pt-2">
+                        <button type="button" class="btn btn-light border px-4 rounded-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="generate_einvoice" class="btn btn-success px-4 rounded-3 fw-semibold">
+                            Validate &amp; Generate UBL 2.1
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const loginTimestamp = <?= (int)$login_time ?> * 1000;
@@ -1280,6 +1563,116 @@ $todayStr = date('Y-m-d');
             new bootstrap.Modal(document.getElementById('productSuccessModal')).show();
         });
         <?php endif; ?>
+
+    // 1. Toggle B2B Corporate TIN input
+    function toggleCorporateTin(isB2b) {
+        const box = document.getElementById('corporateTinBox');
+        if (isB2b) {
+            box.classList.remove('d-none');
+        } else {
+            box.classList.add('d-none');
+        }
+    }
+
+    // 2. Filter Invoices by Status Pill (All, Valid, Pending)
+    let activeInvoiceStatus = 'all';
+
+    function filterInvoicesByStatus(status, btnEl) {
+        activeInvoiceStatus = status;
+        document.querySelectorAll('.invoice-pill').forEach(b => {
+            b.classList.remove('btn-success', 'active');
+            b.classList.add('btn-outline-secondary');
+        });
+        btnEl.classList.remove('btn-outline-secondary');
+        btnEl.classList.add('btn-success', 'active');
+        applyInvoiceFilters();
+    }
+
+    function filterInvoices() {
+        applyInvoiceFilters();
+    }
+
+    function applyInvoiceFilters() {
+        const query = (document.getElementById('invoiceSearchInput')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('.invoice-row');
+
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            const rowSearch = row.getAttribute('data-search') || '';
+
+            const matchesStatus = (activeInvoiceStatus === 'all' || rowStatus === activeInvoiceStatus);
+            const matchesQuery = query === '' || rowSearch.includes(query);
+
+            if (matchesStatus && matchesQuery) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // 3. Open and populate the Inspection Modal (Image 2)
+    function openInspectModal(inv) {
+        const isValid = (inv.status_clean === 'valid');
+        const total = parseFloat(inv.total_amount) || 0;
+        const sst = parseFloat(inv.sst_amount) || 0;
+        const subtotal = Math.max(0, total - sst);
+
+        document.getElementById('insp_header_ref').innerText = inv.ref_no;
+        document.getElementById('insp_receipt_ref').innerText = inv.ref_no;
+        document.getElementById('insp_datetime').innerText = new Date(inv.created_at).toLocaleString('en-MY', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+        });
+
+        document.getElementById('insp_buyer_name').innerText = inv.buyer_clean;
+        document.getElementById('insp_buyer_tin').innerText = inv.tin_clean;
+
+        // Status Badge
+        const badgeEl = document.getElementById('insp_status_badge');
+        const tokenEl = document.getElementById('insp_lhdn_token');
+        if (isValid) {
+            badgeEl.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">Valid Simulated</span>';
+            tokenEl.innerText = inv.lhdn_uuid;
+            document.getElementById('insp_validated_node').innerText = 'Validated: ' + (inv.validated_at || inv.created_at) + ' • Sandbox Node MY-02';
+            document.getElementById('insp_qr_ref').innerText = 'UUID: ' + inv.lhdn_uuid.substring(0, 18) + '...';
+            document.getElementById('insp_qr_img').src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://myinvois.hasil.gov.my/uuid/${inv.lhdn_uuid}`;
+        } else {
+            badgeEl.innerHTML = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1">Pending Conversion</span>';
+            tokenEl.innerText = 'Pending UBL 2.1 Conversion';
+            document.getElementById('insp_validated_node').innerText = 'Awaiting generation in dashboard';
+            document.getElementById('insp_qr_ref').innerText = 'REF: PENDING';
+            document.getElementById('insp_qr_img').src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=PENDING-UBL-CONVERSION-${inv.ref_no}`;
+        }
+
+        // Totals
+        document.getElementById('insp_subtotal').innerText = 'RM ' + subtotal.toFixed(2);
+        document.getElementById('insp_sst').innerText = 'RM ' + sst.toFixed(2);
+        document.getElementById('insp_grand_total').innerText = 'RM ' + total.toFixed(2);
+
+        // Line items table
+        const tbody = document.getElementById('insp_items_tbody');
+        tbody.innerHTML = '';
+        if (inv.items && inv.items.length > 0) {
+            inv.items.forEach(it => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="fw-semibold text-dark">${it.product_name || 'Item'}</td>
+                    <td class="text-center">${it.quantity}</td>
+                    <td class="text-end">RM ${parseFloat(it.subtotal).toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td class="fw-semibold text-dark">POS Order Items</td>
+                    <td class="text-center">1</td>
+                    <td class="text-end">RM ${subtotal.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+        new bootstrap.Modal(document.getElementById('inspectInvoiceModal')).show();
+    }
     </script>
 </body>
 </html>

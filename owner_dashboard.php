@@ -75,6 +75,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Module 2 action: Generate Simulated LHDN e-Invoice (UBL 2.1)
+    if (isset($_POST['generate_einvoice'])) {
+        $txn_id       = (int)($_POST['transaction_id'] ?? 0);
+        $invoice_type = $_POST['invoice_type'] ?? 'b2c';
+        $buyer_tin    = 'EI00000000010';
+        $buyer_name   = 'Walk-in Customer (General Public)';
+        if ($invoice_type === 'b2b') {
+            $corp_tin = trim($_POST['buyer_corporate_tin'] ?? '');
+            if ($corp_tin !== '') {
+                $buyer_tin = $corp_tin;
+                $buyer_name = trim($_POST['buyer_corporate_name'] ?? 'Corporate Buyer');
+            }
+        }
+        // Generate simulated LHDN UUID conforming to UBL 2.1 standard
+        $lhdn_uuid = sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        if ($txn_id > 0) {
+            try {
+                $stmt = $pdo->prepare("
+                    UPDATE transactions 
+                    SET lhdn_uuid = ?, invoice_status = 'valid', buyer_tin = ?, buyer_name = ?, validated_at = NOW() 
+                    WHERE transaction_id = ?
+                ");
+                $stmt->execute([$lhdn_uuid, $buyer_tin, $buyer_name, $txn_id]);
+                $success_message = "Simulated LHDN e-Invoice generated successfully with UUID: {$lhdn_uuid}";
+            } catch (PDOException $e) {
+                $error_message = "Failed to generate e-invoice: " . $e->getMessage();
+            }
+        }
+    }
+    
     // Module 1 (Sub-item 2A): Add New Product with Image File Upload
     if (isset($_POST['add_product'])) {
         $product_name   = trim($_POST['product_name'] ?? '');

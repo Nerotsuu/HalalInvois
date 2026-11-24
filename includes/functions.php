@@ -38,10 +38,16 @@ function getSalesSummary(PDO $pdo): array {
     }
 }
 
-function getRecentInvoices(PDO $pdo, int $limit = 15): array {
+function getRecentInvoices(PDO $pdo, int $limit = 50): array {
     try {
         $stmt = $pdo->prepare("
-            SELECT t.transaction_id, t.total_amount, t.sst_amount, t.payment_method, t.lhdn_uuid, t.created_at, u.username
+            SELECT 
+                t.*,
+                u.username AS cashier_name,
+                COALESCE(t.receipt_ref, CONCAT('#INV-', (1000 + t.transaction_id))) AS ref_no,
+                COALESCE(t.invoice_status, CASE WHEN t.lhdn_uuid IS NOT NULL AND t.lhdn_uuid != '' THEN 'valid' ELSE 'pending' END) AS status_clean,
+                COALESCE(t.buyer_tin, 'EI00000000010') AS tin_clean,
+                COALESCE(t.buyer_name, 'Walk-in Customer (General Public)') AS buyer_clean
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.user_id
             ORDER BY t.created_at DESC, t.transaction_id DESC
@@ -49,7 +55,24 @@ function getRecentInvoices(PDO $pdo, int $limit = 15): array {
         ");
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fetch purchased line items for each transaction
+        $itemsStmt = $pdo->query("
+            SELECT ti.*, p.product_name, p.price 
+            FROM transaction_items ti
+            LEFT JOIN products p ON ti.product_id = p.product_id
+        ");
+        $itemsByTxn = [];
+        while ($row = $itemsStmt->fetch(PDO::FETCH_ASSOC)) {
+            $itemsByTxn[$row['transaction_id']][] = $row;
+        }
+
+        foreach ($invoices as &$inv) {
+            $inv['items'] = $itemsByTxn[$inv['transaction_id']] ?? [];
+        }
+
+        return $invoices;
     } catch (PDOException $e) {
         return [];
     }

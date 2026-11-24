@@ -44,10 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                 mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
             );
 
-            // 1. Insert into transactions table
-            $stmt = $pdo->prepare("INSERT INTO transactions (user_id, total_amount, sst_amount, payment_method, lhdn_uuid) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$user_id, $grand_total, $sst_amount, $payment_method, $lhdn_uuid]);
+            // 1. Insert into transactions table as 'pending' e-invoice
+            $stmt = $pdo->prepare("
+                INSERT INTO transactions (user_id, total_amount, sst_amount, payment_method, lhdn_uuid, buyer_tin, buyer_name, invoice_status) 
+                VALUES (?, ?, ?, ?, NULL, 'EI00000000010', 'Walk-in Customer (General Public)', 'pending')
+            ");
+            $stmt->execute([$user_id, $grand_total, $sst_amount, $payment_method]);
             $transaction_id = $pdo->lastInsertId();
+            // Set receipt reference
+            $receipt_ref = '#INV-' . (1000 + $transaction_id);
+            $pdo->prepare("UPDATE transactions SET receipt_ref = ? WHERE transaction_id = ?")->execute([$receipt_ref, $transaction_id]);
 
             // 2. Insert items into transaction_items table & reduce product stock
             $item_stmt = $pdo->prepare("INSERT INTO transaction_items (transaction_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)");
@@ -72,7 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
             // Prepare digital receipt data for view
             $receipt_data = [
                 'transaction_id' => $transaction_id,
-                'lhdn_uuid'      => $lhdn_uuid,
+                'lhdn_uuid'      => 'Pending e-Invoice Validation',
+                'receipt_ref'    => $receipt_ref,
                 'items'          => $receipt_items,
                 'subtotal'       => $subtotal_amount,
                 'sst_amount'     => $sst_amount,
