@@ -45,11 +45,18 @@
                     <i class="bi bi-hourglass-split"></i> Active: <span id="live-session-duration">00h 00m 00s</span>
                 </div>
 
-                <!-- Username & Role -->
+                                <!-- Username & Role -->
                 <div class="border-start ps-3">
                     <i class="bi bi-person-circle"></i> <strong><?= htmlspecialchars($username); ?></strong>
                     <span class="badge bg-light text-success ms-1 text-uppercase"><?= htmlspecialchars($user_role); ?></span>
                 </div>
+
+                <!-- Return to Dashboard Button (VISIBLE ONLY FOR OWNER) -->
+                <?php if (($user_role ?? '') === 'owner'): ?>
+                    <a href="owner_dashboard.php" class="btn btn-sm btn-light text-success fw-bold ms-2 shadow-sm">
+                        <i class="bi bi-speedometer2 me-1"></i> Owner Dashboard
+                    </a>
+                <?php endif; ?>
 
                 <!-- Logout Link -->
                 <a href="login.php?logout=1" class="btn btn-sm btn-outline-light ms-2">Logout</a>

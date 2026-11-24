@@ -22,15 +22,24 @@ if (($_SESSION['role'] ?? '') !== 'owner') {
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
 
-$username   = $_SESSION['username'] ?? 'Owner';
-$user_role  = $_SESSION['role'] ?? 'owner';
-$login_time = $_SESSION['login_time'] ?? time();
-$success_message = '';
-$error_message   = '';
-$active_tab      = $_POST['active_tab'] ?? ($_GET['tab'] ?? 'halal');
+$username               = $_SESSION['username'] ?? 'Owner';
+$user_role              = $_SESSION['role'] ?? 'owner';
+$login_time             = $_SESSION['login_time'] ?? time();
+$success_message        = $_SESSION['flash_success'] ?? '';
+$error_message          = $_SESSION['flash_error'] ?? '';
+$newly_added_ingredient = $_SESSION['newly_added_ingredient'] ?? null;
+$newly_added_product    = $_SESSION['newly_added_product'] ?? null;
+$active_tab             = $_SESSION['active_tab'] ?? ($_GET['tab'] ?? 'halal');
+unset(
+    $_SESSION['flash_success'], 
+    $_SESSION['flash_error'], 
+    $_SESSION['newly_added_ingredient'], 
+    $_SESSION['newly_added_product'],
+    $_SESSION['active_tab']
+);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Module 1 action: Add Halal Ingredient
+        // Module 1 action: Add Halal Ingredient
     if (isset($_POST['add_ingredient'])) {
         $active_tab       = 'halal';
         $ingredient_name  = trim($_POST['ingredient_name'] ?? '');
@@ -41,37 +50,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $unit             = trim($_POST['unit'] ?? 'kg');
         $halal_cert_no    = trim($_POST['halal_cert_no'] ?? '');
         $cert_expiry_date = trim($_POST['cert_expiry_date'] ?? '');
+
         if ($ingredient_name === '' || $supplier_name === '' || $expiry_date === '') {
-            $error_message = "Please complete all required ingredient fields.";
-        } else {
-            try {
-                $stmt = $pdo->prepare("
-                    INSERT INTO ingredients 
-                        (ingredient_name, supplier_name, expiry_date, current_stock, unit, halal_cert_no, cert_expiry_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $ingredient_name,
-                    $supplier_name,
-                    $expiry_date,
-                    $current_stock,
-                    $unit,
-                    $halal_cert_no !== '' ? $halal_cert_no : null,
-                    $cert_expiry_date !== '' ? $cert_expiry_date : null
-                ]);
-                // Store data to trigger the Success Popup Modal (Image 3)
-                $newly_added_ingredient = [
-                    'name'          => $ingredient_name,
-                    'supplier'      => $supplier_name,
-                    'batch_no'      => $batch_number !== '' ? $batch_number : ('BTH-' . date('Y') . '-X' . mt_rand(10, 99)),
-                    'jakim_cert_no' => $halal_cert_no !== '' ? $halal_cert_no : 'JAKIM.700-2/3/1 ' . mt_rand(100, 999),
-                    'valid_until'   => $cert_expiry_date !== '' ? date('d M Y', strtotime($cert_expiry_date)) : date('d M Y', strtotime($expiry_date)),
-                    'authority'     => 'Jabatan Kemajuan Islam Malaysia (JAKIM)'
-                ];
-                $success_message = "Ingredient '{$ingredient_name}' verified and recorded.";
-            } catch (PDOException $e) {
-                $error_message = "Failed to add ingredient: " . $e->getMessage();
-            }
+            $_SESSION['flash_error'] = "Please complete all required ingredient fields.";
+            header("Location: owner_dashboard.php");
+            exit();
+        }
+        // PREVENT DUPLICATE: Check if ingredient name from the same supplier already exists
+        $dupStmt = $pdo->prepare("SELECT ingredient_id FROM ingredients WHERE LOWER(TRIM(ingredient_name)) = LOWER(?) AND LOWER(TRIM(supplier_name)) = LOWER(?)");
+        $dupStmt->execute([$ingredient_name, $supplier_name]);
+        if ($dupStmt->fetch()) {
+            $_SESSION['flash_error'] = "Duplicate Entry: '{$ingredient_name}' from supplier '{$supplier_name}' is already recorded in the ledger.";
+            header("Location: owner_dashboard.php");
+            exit();
+        }
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO ingredients 
+                    (ingredient_name, supplier_name, expiry_date, current_stock, unit, halal_cert_no, cert_expiry_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $ingredient_name,
+                $supplier_name,
+                $expiry_date,
+                $current_stock,
+                $unit,
+                $halal_cert_no !== '' ? $halal_cert_no : null,
+                $cert_expiry_date !== '' ? $cert_expiry_date : null
+            ]);
+            // Save flash data for success popup
+            $_SESSION['newly_added_ingredient'] = [
+                'name'          => $ingredient_name,
+                'supplier'      => $supplier_name,
+                'batch_no'      => $batch_number !== '' ? $batch_number : ('BTH-' . date('Y') . '-X' . mt_rand(10, 99)),
+                'jakim_cert_no' => $halal_cert_no !== '' ? $halal_cert_no : 'JAKIM.700-2/3/1 ' . mt_rand(100, 999),
+                'valid_until'   => $cert_expiry_date !== '' ? date('d M Y', strtotime($cert_expiry_date)) : date('d M Y', strtotime($expiry_date)),
+                'authority'     => 'Jabatan Kemajuan Islam Malaysia (JAKIM)'
+            ];
+            $_SESSION['flash_success'] = "Ingredient '{$ingredient_name}' verified and recorded.";
+            // Post/Redirect/Get: Prevents duplicate on reload
+            header("Location: owner_dashboard.php");
+            exit();
+        } catch (PDOException $e) {
+            $_SESSION['flash_error'] = "Failed to add ingredient: " . $e->getMessage();
+            header("Location: owner_dashboard.php");
+            exit();
         }
     }
 
@@ -109,8 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    
-    // Module 1 (Sub-item 2A): Add New Product with Image File Upload
+
+        // Module 1 (Sub-item 2A): Add New Product with Image File Upload
     if (isset($_POST['add_product'])) {
         $product_name   = trim($_POST['product_name'] ?? '');
         $category       = trim($_POST['category'] ?? '');
@@ -118,6 +142,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stock_quantity = (int)($_POST['stock_quantity'] ?? 0);
         $status         = $_POST['status'] ?? 'available';
         $image          = 'assets/default-food.jpeg';
+
+        if ($product_name === '' || $category === '' || $price <= 0) {
+            $_SESSION['flash_error'] = "Please provide product name, category, and a valid price.";
+            header("Location: owner_dashboard.php");
+            exit();
+        }
+
+        // PREVENT DUPLICATE: Check if product with this exact name already exists
+        $dupProd = $pdo->prepare("SELECT product_id FROM products WHERE LOWER(TRIM(product_name)) = LOWER(?)");
+        $dupProd->execute([$product_name]);
+        if ($dupProd->fetch()) {
+            $_SESSION['flash_error'] = "Duplicate Product: A product named '{$product_name}' already exists in your catalogue.";
+            header("Location: owner_dashboard.php");
+            exit();
+        }
+
         // Handle uploaded image from PC / folder
         if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
             $fileTmpPath = $_FILES['product_image']['tmp_name'];
@@ -130,30 +170,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-        if ($product_name === '' || $category === '' || $price <= 0) {
-            $error_message = "Please provide product name, category, and a valid price.";
-        } else {
-            try {
-                $stmt = $pdo->prepare("
-                    INSERT INTO products (product_name, category, price, stock_quantity, status, image)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([$product_name, $category, $price, $stock_quantity, $status, $image]);
-                // Store data to trigger the Product Success Modal
-                $newly_added_product = [
-                    'name'     => $product_name,
-                    'category' => $category,
-                    'price'    => number_format($price, 2),
-                    'stock'    => $stock_quantity,
-                    'status'   => $status,
-                    'image'    => $image
-                ];
-                $success_message = "Product '{$product_name}' successfully added to catalog.";
-            } catch (PDOException $e) {
-                $error_message = "Failed to add product: " . $e->getMessage();
-            }
+
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO products (product_name, category, price, stock_quantity, status, image)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$product_name, $category, $price, $stock_quantity, $status, $image]);
+
+            // Save flash data for product success popup
+            $_SESSION['newly_added_product'] = [
+                'name'     => $product_name,
+                'category' => $category,
+                'price'    => number_format($price, 2),
+                'stock'    => $stock_quantity,
+                'status'   => $status,
+                'image'    => $image
+            ];
+            $_SESSION['flash_success'] = "Product '{$product_name}' successfully added to catalog.";
+            
+            // Post/Redirect/Get: Prevents duplicate on reload
+            header("Location: owner_dashboard.php");
+            exit();
+        } catch (PDOException $e) {
+            $_SESSION['flash_error'] = "Failed to add product: " . $e->getMessage();
+            header("Location: owner_dashboard.php");
+            exit();
         }
     }
+
     // Module 1 (Sub-item 2B): Edit Existing Product
     if (isset($_POST['edit_product'])) {
         $product_id     = (int)($_POST['product_id'] ?? 0);
@@ -186,9 +231,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success_message = "Product '{$product_name}' updated successfully.";
             } catch (PDOException $e) {
                 $error_message = "Failed to update product: " . $e->getMessage();
+                header("Location: owner_dashboard.php");
+                exit();
             }
         }
     }
+    
     // Module 1 (Sub-item 2C): Delete Product
     if (isset($_POST['delete_product'])) {
         $product_id = (int)($_POST['delete_product_id'] ?? 0);
